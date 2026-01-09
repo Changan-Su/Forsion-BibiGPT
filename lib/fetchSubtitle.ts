@@ -9,6 +9,7 @@ export async function fetchSubtitle(
   title: string
   subtitlesArray?: null | Array<CommonSubtitleItem>
   descriptionText?: string
+  duration?: number // 视频时长（秒数）
 }> {
   const { service, videoId, pageNumber } = videoConfig
   console.log('video: ', videoConfig)

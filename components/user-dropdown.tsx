@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { Clover, Edit, LayoutDashboard, LogOut, ShoppingBag } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
-import Popover from '~/components/shared/popover'
+import { Popover, PopoverTrigger, PopoverContent } from '~/components/shared/popover'
 import { FADE_IN_ANIMATION_SETTINGS } from '~/utils/constants'
 
 export default function UserDropdown() {
@@ -23,9 +23,19 @@ export default function UserDropdown() {
 
   return (
     <motion.div className="relative inline-block flex content-center text-left" {...FADE_IN_ANIMATION_SETTINGS}>
-      <Popover
-        content={
-          <div className="w-full rounded-md bg-white p-2 sm:w-56">
+      <Popover open={openPopover} onOpenChange={setOpenPopover}>
+        <PopoverTrigger asChild>
+          <button className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-gray-300 transition-all duration-75 focus:outline-none active:scale-95 sm:h-9 sm:w-9">
+            <img
+              alt={email}
+              src={image || `https://avatars.dicebear.com/api/micah/${email}.svg`}
+              width={40}
+              height={40}
+            />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-56 p-2">
+          <div className="w-full">
             <Link
               href="/user/videos"
               className="relative flex w-full items-center justify-start space-x-2 rounded-md p-2 text-left text-sm transition-all duration-75 hover:bg-gray-100"
@@ -62,22 +72,7 @@ export default function UserDropdown() {
               <p className="text-sm">登出</p>
             </button>
           </div>
-        }
-        align="end"
-        openPopover={openPopover}
-        setOpenPopover={setOpenPopover}
-      >
-        <button
-          onClick={() => setOpenPopover(!openPopover)}
-          className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-gray-300 transition-all duration-75 focus:outline-none active:scale-95 sm:h-9 sm:w-9"
-        >
-          <img
-            alt={email}
-            src={image || `https://avatars.dicebear.com/api/micah/${email}.svg`}
-            width={40}
-            height={40}
-          />
-        </button>
+        </PopoverContent>
       </Popover>
     </motion.div>
   )

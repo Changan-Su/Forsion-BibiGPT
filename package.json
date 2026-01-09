@@ -2,7 +2,7 @@
   "private": true,
   "name": "bibi-gpt",
   "scripts": {
-    "dev": "next dev -p 2014",
+    "dev": "next dev --webpack -p 2014",
     "build": "next build",
     "start": "next start -p 2014",
     "prepare": "husky install"
@@ -36,6 +36,7 @@
     "clsx": "^1.2.1",
     "cmdk": "^0.2.0",
     "csstype": "^3.1.1",
+    "date-fns": "^4.1.0",
     "eventsource-parser": "^0.1.0",
     "flowbite": "^1.6.3",
     "flowbite-react": "^0.4.1",

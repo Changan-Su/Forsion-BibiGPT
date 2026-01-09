@@ -10,22 +10,20 @@ export default function videoIdSentence({
   videoUrl: string
   sentence: string
 }) {
-  // https://youtube.com/watch?v=DHhOgWPKIKU&t=15s
-  // https://youtu.be/DHhOgWPKIKU?t=246
-  // https://www.bilibili.com/video/BV1fX4y1Q7Ux/?t=10
-
   const isBiliBili = videoUrl.includes('bilibili.com')
-  // todo: if videoUrl is short-url (not bilibili.com or youtube.com)
   const baseUrl = isBiliBili
     ? `https://www.bilibili.com/video/${videoId}/?t=`
     : `https://youtube.com/watch?v=${videoId}&t=`
 
   const matchResult = extractSentenceWithTimestamp(sentence)
   if (matchResult) {
-    // simplify the seconds with number: 1:11 or 1.11 -> 7, todo: 0.003 is not able
-    const secondsStr = matchResult[1].split(':')[0]
-    const seconds = trimSeconds(secondsStr)
-    const { formattedContent, timestamp } = extractTimestamp(matchResult)
+    // matchResult[1] 是时间戳如 "0:10" 或 "0:45"
+    const timestampStr = matchResult[1]
+    const parts = timestampStr.split(':')
+    const seconds = parseInt(parts[0]) * 60 + parseInt(parts[1])
+
+    const timestamp = timestampStr
+    const content = matchResult[2]
 
     return (
       <li className="mb-2 list-disc">
@@ -37,7 +35,7 @@ export default function videoIdSentence({
         >
           {timestamp}
         </a>
-        {`${formattedContent}`}
+        {` - ${content}`}
       </li>
     )
   }

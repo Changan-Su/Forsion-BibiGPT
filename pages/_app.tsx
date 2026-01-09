@@ -1,4 +1,4 @@
-import { Inter as FontSans } from '@next/font/google'
+import { Inter } from 'next/font/google'
 import { createBrowserSupabaseClient, Session } from '@supabase/auth-helpers-nextjs'
 import { SessionContextProvider } from '@supabase/auth-helpers-react'
 import { Analytics } from '@vercel/analytics/react'
@@ -17,10 +17,12 @@ import Header from '../components/Header'
 import '../styles/globals.css'
 import '../styles/markdown.css'
 
-const fontSans = FontSans({
+const fontSans = Inter({
   subsets: ['latin'],
   variable: '--font-sans',
   display: 'swap',
+  preload: true,
+  adjustFontFallback: true,
 })
 function MyApp({
   Component,
@@ -37,9 +39,9 @@ function MyApp({
       <SessionContextProvider supabaseClient={supabaseClient} initialSession={pageProps.initialSession}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <TooltipProvider>
-            <div className={cn('mx-auto flex min-h-screen flex-col justify-center font-sans', fontSans.variable)}>
+            <div className={cn('flex min-h-screen flex-col font-sans', fontSans.variable)}>
               <Header showSingIn={showSingIn} />
-              <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center bg-white text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-50">
+              <main className="flex w-full flex-1 flex-col bg-white text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-50">
                 <Component {...pageProps} showSingIn={showSingIn} />
                 <Analytics />
                 <CommandMenu />

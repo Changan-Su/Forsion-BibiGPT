@@ -9,6 +9,7 @@ interface BilibiliVideoInfo {
   title: string
   desc?: string
   dynamic?: string
+  duration?: number // 视频时长（秒数）
   subtitle?: {
     list: BilibiliSubtitles[]
   }
@@ -42,7 +43,8 @@ export const fetchBilibiliSubtitleUrls = async (
   // support multiple parts of video
   if (pageNumber || json?.data?.pages?.length > 0) {
     const { aid, pages } = json?.data || {}
-    const { cid } = find(pages, { page: Number(pageNumber || 1) }) || {}
+    const targetPage = find(pages, { page: Number(pageNumber || 1) }) || pages[0]
+    const { cid, duration } = targetPage || {}
 
     // https://api.bilibili.com/x/player/v2?aid=865462240&cid=1035524244
     const pageUrl = `https://api.bilibili.com/x/player/v2?aid=${aid}&cid=${cid}`
@@ -50,10 +52,12 @@ export const fetchBilibiliSubtitleUrls = async (
     const j = await res.json()
 
     // r.data.subtitle.subtitles
-    return { ...json.data, subtitle: { list: j.data.subtitle.subtitles } }
+    return { ...json.data, duration, subtitle: { list: j.data.subtitle.subtitles } }
   }
 
   // return json.data.View;
   // { code: -404, message: '啥都木有', ttl: 1 }
-  return json.data
+  // 单P视频，从pages[0]获取duration，如果没有则从data.duration获取
+  const duration = json?.data?.pages?.[0]?.duration || json?.data?.duration || undefined
+  return { ...json.data, duration }
 }

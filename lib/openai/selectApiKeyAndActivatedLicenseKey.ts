@@ -7,16 +7,19 @@ export interface ApiKeyConfig {
   apiBaseUrl?: string
 }
 
-export async function selectApiKeyAndActivatedLicenseKey(
-  apiKey?: string,
-  videoId?: string,
-): Promise<ApiKeyConfig> {
+export async function selectApiKeyAndActivatedLicenseKey(apiKey?: string, videoId?: string): Promise<ApiKeyConfig> {
   let selectedApiKey = ''
   let selectedApiBaseUrl: string | undefined = undefined
 
   if (apiKey) {
     if (checkOpenaiApiKeys(apiKey)) {
-      const userApiKeys = apiKey.split(',')
+      const userApiKeys = apiKey
+        .split(',')
+        .map((k) => k.trim())
+        .filter((k) => k)
+      if (userApiKeys.length === 0) {
+        throw new Error('No valid API key provided')
+      }
       selectedApiKey = sample(userApiKeys)
     } else {
       // user is using validated licenseKey
@@ -27,13 +30,33 @@ export async function selectApiKeyAndActivatedLicenseKey(
       selectedApiKey = apiKey
     }
   } else {
-    // don't need to validate anymore, already verified in middleware?
+    // Use server-side API key
     const myApiKeyList = process.env.OPENAI_API_KEY
-    selectedApiKey = sample(myApiKeyList?.split(',')) || ''
+    if (!myApiKeyList) {
+      throw new Error('No OPENAI_API_KEY found in environment variables and no user API key provided')
+    }
+    const apiKeys = myApiKeyList
+      .split(',')
+      .map((k) => k.trim())
+      .filter((k) => k)
+    if (apiKeys.length === 0) {
+      throw new Error('OPENAI_API_KEY is empty')
+    }
+    selectedApiKey = sample(apiKeys)
+  }
+
+  if (!selectedApiKey) {
+    throw new Error('Failed to select a valid API key')
   }
 
   // Get API base URL from environment variable
   selectedApiBaseUrl = process.env.OPENAI_API_BASE_URL
+  console.debug(
+    '[selectApiKeyAndActivatedLicenseKey] selectedApiKey:',
+    selectedApiKey.substring(0, 10) + '...',
+    'apiBaseUrl:',
+    selectedApiBaseUrl,
+  )
 
   return {
     apiKey: selectedApiKey,

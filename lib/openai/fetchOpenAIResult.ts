@@ -42,19 +42,46 @@ export async function fetchOpenAIResult(
   const baseUrl = apiBaseUrl || process.env.OPENAI_API_BASE_URL || 'https://api.openai.com/v1'
   const apiUrl = `${baseUrl.replace(/\/$/, '')}/chat/completions`
 
-  isDev && console.log({ apiKey, apiUrl })
-  const res = await fetch(apiUrl, {
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey ?? ''}`,
-    },
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
+  isDev &&
+    console.log({
+      apiUrl,
+      'process.env.OPENAI_API_BASE_URL': process.env.OPENAI_API_BASE_URL,
+      'apiBaseUrl parameter': apiBaseUrl,
+    })
+
+  // Remove api_key from payload before sending
+  const { api_key, ...cleanPayload } = payload
+
+  let res: Response
+  try {
+    res = await fetch(apiUrl, {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey ?? ''}`,
+      },
+      method: 'POST',
+      body: JSON.stringify(cleanPayload),
+      signal: AbortSignal.timeout(30000), // 改为 30s，Node.js 环境下足够
+    })
+  } catch (fetchError: any) {
+    console.error('Fetch error details:', {
+      message: fetchError.message,
+      name: fetchError.name,
+      cause: fetchError.cause,
+    })
+    throw new Error(`Failed to connect to OpenAI API: ${fetchError.message}`)
+  }
 
   if (res.status !== 200) {
-    const errorJson = await res.json()
-    throw new Error(`API Error [${res.statusText}]: ${errorJson.error?.message || errorJson.message || 'Unknown error'}`)
+    let errorMessage = 'Unknown error'
+    try {
+      const errorJson = await res.json()
+      errorMessage = errorJson.error?.message || errorJson.message || res.statusText
+    } catch {
+      errorMessage = res.statusText
+    }
+    console.error('OpenAI API Error:', { status: res.status, errorMessage })
+    throw new Error(`API Error [${res.status} ${res.statusText}]: ${errorMessage}`)
   }
 
   const cacheId = getCacheId(videoConfig)
@@ -62,12 +89,8 @@ export async function fetchOpenAIResult(
   if (!payload.stream) {
     const result = await res.json()
     const betterResult = trimOpenAiResult(result)
-
-    // Redis caching disabled in Edge Runtime (ioredis not compatible)
-    // await redis.setex(cacheId, 86400, JSON.stringify(betterResult))
     console.info(`video ${cacheId} - caching disabled`)
     isDev && console.log('========betterResult========', betterResult)
-
     return betterResult
   }
 
@@ -75,45 +98,40 @@ export async function fetchOpenAIResult(
   let tempData = ''
   const stream = new ReadableStream({
     async start(controller) {
-      // callback
       async function onParse(event: ParsedEvent | ReconnectInterval) {
         if (event.type === 'event') {
           const data = event.data
-          // https://beta.openai.com/docs/api-reference/completions/create#completions/create-stream
           if (data === '[DONE]') {
-            // active
             controller.close()
-            // Redis caching disabled in Edge Runtime (ioredis not compatible)
-            // await redis.setex(cacheId, 86400, JSON.stringify(tempData))
-            console.info(`video ${cacheId} - caching disabled`)
+            console.info(`video ${cacheId} - stream completed`)
             isDev && console.log('========betterResult after streamed========', tempData)
             return
           }
           try {
             const json = JSON.parse(data)
-            const text = json.choices[0].delta?.content || ''
-            // todo: add redis cache
+            const text = json.choices[0]?.delta?.content || ''
             tempData += text
             if (counter < 2 && (text.match(/\n/) || []).length) {
-              // this is a prefix character (i.e., "\n\n"), do nothing
               return
             }
             const queue = encoder.encode(text)
             controller.enqueue(queue)
             counter++
           } catch (e) {
-            // maybe parse error
+            console.error('Parse error:', e)
             controller.error(e)
           }
         }
       }
 
-      // stream response (SSE) from OpenAI may be fragmented into multiple chunks
-      // this ensures we properly read chunks and invoke an event for each SSE event stream
       const parser = createParser(onParse)
-      // https://web.dev/streams/#asynchronous-iteration
-      for await (const chunk of res.body as any) {
-        parser.feed(decoder.decode(chunk))
+      try {
+        for await (const chunk of res.body as any) {
+          parser.feed(decoder.decode(chunk))
+        }
+      } catch (streamError: any) {
+        console.error('Stream error:', streamError.message)
+        controller.error(streamError)
       }
     },
   })

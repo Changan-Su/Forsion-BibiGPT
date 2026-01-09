@@ -1,40 +1,29 @@
-import { Dispatch, SetStateAction, ReactNode, useRef } from 'react'
+import * as React from 'react'
 import * as PopoverPrimitive from '@radix-ui/react-popover'
-import useWindowSize from '~/hooks/use-window-size'
-import Leaflet from './leaflet'
 
-export default function Popover({
-  children,
-  content,
-  align = 'center',
-  openPopover,
-  setOpenPopover,
-}: {
-  children: ReactNode
-  content: ReactNode | string
-  align?: 'center' | 'start' | 'end'
-  openPopover: boolean
-  setOpenPopover: Dispatch<SetStateAction<boolean>>
-}) {
-  const { isMobile, isDesktop } = useWindowSize()
-  return (
-    <>
-      {isMobile && children}
-      {openPopover && isMobile && <Leaflet setShow={setOpenPopover}>{content}</Leaflet>}
-      {isDesktop && (
-        <PopoverPrimitive.Root>
-          <PopoverPrimitive.Trigger className="inline-flex" asChild>
-            {children}
-          </PopoverPrimitive.Trigger>
-          <PopoverPrimitive.Content
-            sideOffset={4}
-            align={align}
-            className="animate-slide-up-fade z-20 items-center rounded-md border border-gray-200 bg-white drop-shadow-lg"
-          >
-            {content}
-          </PopoverPrimitive.Content>
-        </PopoverPrimitive.Root>
+import { cn } from '~/lib/utils'
+
+const Popover = PopoverPrimitive.Root
+
+const PopoverTrigger = PopoverPrimitive.Trigger
+
+const PopoverContent = React.forwardRef<
+  React.ElementRef<typeof PopoverPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
+>(({ className, align = 'center', sideOffset = 4, ...props }, ref) => (
+  <PopoverPrimitive.Portal>
+    <PopoverPrimitive.Content
+      ref={ref}
+      align={align}
+      sideOffset={sideOffset}
+      className={cn(
+        'z-50 w-72 rounded-md border border-slate-200 bg-white p-4 text-slate-950 shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50',
+        className,
       )}
-    </>
-  )
-}
+      {...props}
+    />
+  </PopoverPrimitive.Portal>
+))
+PopoverContent.displayName = PopoverPrimitive.Content.displayName
+
+export { Popover, PopoverTrigger, PopoverContent }

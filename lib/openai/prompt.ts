@@ -51,6 +51,92 @@ export function getUserSubtitlePrompt(title: string, transcript: any, videoConfi
   return `Title: "${videoTitle}"\nTranscript: "${videoTranscript}"\n\nInstructions: ${prompt}`
 }
 
+export function getStructuredSummaryPrompt(
+  title: string,
+  transcript: any,
+  videoConfig: VideoConfig,
+  duration?: number,
+) {
+  const videoTitle = title?.replace(/\n+/g, ' ').trim()
+  const videoTranscript = limitTranscriptByteLength(transcript).replace(/\n+/g, ' ').trim()
+  const language = videoConfig.outputLanguage || DEFAULT_LANGUAGE
+
+  // 添加时长约束
+  let durationConstraint = ''
+  if (duration && duration > 0) {
+    const { secondsToTimeString } = require('~/utils/videoDuration')
+    const durationFormatted = secondsToTimeString(duration)
+    durationConstraint = `\n\nIMPORTANT: This video has a total duration of ${durationFormatted} (${duration} seconds). ALL timestamps you generate (e.g., MM:SS or HH:MM:SS) MUST be ≤ this duration. If any content corresponds to a time beyond the duration, automatically adjust it to the closest valid time or skip that timestamp. NEVER generate timestamps that exceed ${durationFormatted}.`
+  }
+
+  const prompt = `You are a professional video content analyzer. Please analyze the video and generate a comprehensive structured summary in ${language} Language.${durationConstraint}
+
+Your output MUST follow this EXACT format (copy the structure precisely):
+
+## 摘要
+[Write a complete paragraph (2-4 sentences) summarizing the video content. Do NOT use bullet points or lists. Write as a flowing paragraph.]
+
+## 亮点
+[emoji] [Content description. Write naturally, include key details. Add timestamp at the END if applicable, format: MM:SS or HH:MM:SS]
+[emoji] [Content description with timestamp at the end if applicable]
+[Continue with 5-8 highlights, each starting with an emoji]
+#标签1 #标签2 #标签3 [Add 3-5 relevant hashtags at the end]
+
+## 思考
+[Question as a title/subheading, without "问题：" prefix]
+[Answer content. Add timestamp at the END of the answer if applicable, format: MM:SS or HH:MM:SS]
+
+[Next question as title]
+[Answer with timestamp at end if applicable]
+
+[Continue with 3-5 questions and answers]
+
+## 术语解释
+[Term Name]: [Explanation content]
+[Term Name]: [Explanation content]
+[Continue with 3-5 terms, each on a new line]
+
+## 阅读全文
+
+## AI 润色
+
+## AI 改写
+## 视频主题
+[Video topic/title in one line]
+
+## 时间线总结
+
+[Timestamp] - [emoji] [Brief title/heading]
+
+Screenshot at [seconds]s
+
+[Detailed description paragraph explaining what happens at this timestamp]
+
+[Next timestamp entry]
+[Continue with chronological timeline entries]
+
+Requirements:
+1. Use EXACT markdown headers: ## 摘要, ## 亮点, ## 思考, ## 术语解释, ## 阅读全文, ## AI 润色, ## AI 改写, ## 视频主题, ## 时间线总结
+2. 摘要 must be a complete paragraph, NOT a list
+3. 亮点: Start each line with emoji, write natural content, add timestamp at the END if applicable. End with hashtags line
+4. 思考: Question as title (no "问题：" prefix), answer as content with timestamp at END if applicable
+5. 术语解释: Format as "Term: Explanation" (one per line, no bullet points)
+6. Include the three section headers: ## 阅读全文, ## AI 润色, ## AI 改写 (these are just headers, no content needed)
+7. 视频主题: One line title
+8. 时间线总结: Format as "Timestamp - emoji Title" followed by "Screenshot at Xs" and detailed paragraph
+9. Ensure all timestamps are accurate and correspond to the video content
+10. There may be typos in the subtitles, please correct them
+11. All content should be in ${language} Language
+12. Write naturally and engagingly, similar to the example format
+
+Title: "${videoTitle}"
+Transcript: "${videoTranscript}"
+
+Please generate the structured summary now:`
+
+  return prompt
+}
+
 export function getUserSubtitleWithTimestampPrompt(title: string, transcript: any, videoConfig: VideoConfig) {
   const videoTitle = title?.replace(/\n+/g, ' ').trim()
   const videoTranscript = limitTranscriptByteLength(transcript).replace(/\n+/g, ' ').trim()
@@ -61,4 +147,13 @@ export function getUserSubtitleWithTimestampPrompt(title: string, transcript: an
   const promptWithTimestamp = `Act as the author and provide exactly ${sentenceCount} bullet points for the text transcript given in the format [seconds] - [text] \nMake sure that:\n    - Please start by summarizing the whole video in one short sentence\n    - Then, please summarize with each bullet_point is at least ${wordsCount} words\n    - each bullet_point start with \"- \" or a number or a bullet point symbol\n    - each bullet_point should has the start timestamp, use this template: - seconds - ${emojiTemplateText}[bullet_point]\n    - there may be typos in the subtitles, please correct them\n    - Reply all in ${language} Language.`
   const videoTranscripts = limitTranscriptByteLength(JSON.stringify(videoTranscript))
   return `Title: ${videoTitle}\nTranscript: ${videoTranscripts}\n\nInstructions: ${promptWithTimestamp}`
+}
+
+export function getStructuredSummaryWithTimestampPrompt(
+  title: string,
+  transcript: any,
+  videoConfig: VideoConfig,
+  duration?: number,
+) {
+  return getStructuredSummaryPrompt(title, transcript, videoConfig, duration)
 }

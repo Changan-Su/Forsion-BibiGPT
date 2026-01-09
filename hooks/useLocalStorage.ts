@@ -1,6 +1,5 @@
 import React from 'react'
 
-
 /**
  * State to store our value
  * Pass initial state function to useState so logic is only executed once
@@ -11,7 +10,7 @@ import React from 'react'
  * @param {T} [initialValue]
  * @return {*}  {(T | undefined)}
  */
-export function useLocalStorage<T>(key: string, initialValue?: T){
+export function useLocalStorage<T>(key: string, initialValue?: T) {
   const [storedValue, setStoredValue] = React.useState<T>(() => {
     if (typeof window === 'undefined') {
       return initialValue
@@ -28,14 +27,13 @@ export function useLocalStorage<T>(key: string, initialValue?: T){
     }
   })
 
-
   /**
    * Return a wrapped version of useState's setter function that ...
    * ...persists the new value to localStorage.
    *
-   * @param {T} value
+   * @param {T | ((prev: T) => T)} value
    */
-  const setValue = (value: T): void => {
+  const setValue = (value: T | ((prev: T) => T)): void => {
     try {
       // Allow value to be a function so we have same API as useState
       const valueToStore = value instanceof Function ? value(storedValue) : value

@@ -3,7 +3,8 @@ import React from 'react'
 import { ActionsAfterResult } from '~/components/ActionsAfterResult'
 import Sentence from '~/components/Sentence'
 import { useToast } from '~/hooks/use-toast'
-import { formatSummary } from '~/utils/formatSummary'
+import { formatSummary, parseStructuredSummary } from '~/utils/formatSummary'
+import { StructuredSummaryDisplay } from '~/components/StructuredSummaryDisplay'
 
 export let isSecureContext = false
 
@@ -16,11 +17,21 @@ export function SummaryResult({
   currentVideoId,
   summary,
   shouldShowTimestamp,
+  userKey,
+  videoConfig,
+  onSummaryUpdate,
+  videoPlayerController,
+  videoDuration,
 }: {
   currentVideoUrl: string
   currentVideoId: string
   summary: string
   shouldShowTimestamp?: boolean
+  userKey?: string
+  videoConfig?: any
+  onSummaryUpdate?: (newSummary: string) => void
+  videoPlayerController?: { seekTo: (seconds: number) => void } | null
+  videoDuration?: number
 }) {
   const { toast } = useToast()
   const formattedCachedSummary = summary?.startsWith('"')
@@ -29,6 +40,26 @@ export function SummaryResult({
         .split('\\n')
         .join('\n')
     : summary
+
+  // 尝试解析结构化总结
+  let structuredData = null
+  try {
+    structuredData = parseStructuredSummary(formattedCachedSummary, videoDuration)
+    // 检查是否成功解析
+    if (
+      !structuredData.topic &&
+      !structuredData.summary &&
+      structuredData.highlights.length === 0 &&
+      structuredData.reflections.length === 0 &&
+      structuredData.terms.length === 0 &&
+      structuredData.timeline.length === 0
+    ) {
+      structuredData = null
+    }
+  } catch (error) {
+    console.error('Failed to parse structured summary:', error)
+    structuredData = null
+  }
 
   const { summaryArray, formattedSummary } = formatSummary(formattedCachedSummary)
   const summaryNote = formattedSummary + '\n\n#BibiGPT https://b.jimmylv.cn @吕立青_JimmyLv \nBV1fX4y1Q7Ux'
@@ -42,6 +73,30 @@ export function SummaryResult({
     toast({ description: '复制成功 ✂️' })
   }
 
+  // 如果成功解析为结构化总结，使用结构化显示组件
+  if (structuredData) {
+    return (
+      <div className="mb-8 px-4">
+        <h3 className="m-8 mx-auto max-w-3xl border-t-2 border-dashed pt-8 text-center text-2xl font-bold sm:text-4xl">
+          <a href={currentVideoUrl} className="hover:text-pink-600 hover:underline" target="_blank" rel="noreferrer">
+            {`【📝 总结：${currentVideoId}】`}
+          </a>
+        </h3>
+        <StructuredSummaryDisplay
+          summary={formattedCachedSummary}
+          currentVideoUrl={currentVideoUrl}
+          currentVideoId={currentVideoId}
+          userKey={userKey}
+          videoConfig={videoConfig}
+          onSummaryUpdate={onSummaryUpdate}
+          videoPlayerController={videoPlayerController}
+        />
+        <ActionsAfterResult curVideo={currentVideoUrl} onCopy={handleCopy} summaryNote={formattedSummary} />
+      </div>
+    )
+  }
+
+  // 回退到原来的显示方式
   return (
     <div className="mb-8 px-4">
       <h3 className="m-8 mx-auto max-w-3xl border-t-2 border-dashed pt-8 text-center text-2xl font-bold sm:text-4xl">

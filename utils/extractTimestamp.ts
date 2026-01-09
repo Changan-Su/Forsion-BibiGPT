@@ -1,10 +1,12 @@
 export function extractTimestamp(matchResult: RegExpMatchArray) {
   let timestamp: string | undefined
-  const seconds = Number(matchResult[1].replace(':', '.'))
+  // 匹配到的是 "10" 或 "45" 这样的数字，需要直接转换
+  const seconds = Number(matchResult[1].replace(':', '.').replace('：', '.'))
   const hours = Math.floor(seconds / 3600)
   const remainingSeconds = Math.floor(seconds % 3600)
   const minutes = Math.floor(remainingSeconds / 60)
   const remainingMinutes = Math.floor(remainingSeconds % 60)
+
   if (hours > 0) {
     timestamp = `${hours}:${minutes.toString().padStart(2, '0')}:${remainingMinutes.toString().padStart(2, '0')}`
   } else {
@@ -19,7 +21,6 @@ export function extractTimestamp(matchResult: RegExpMatchArray) {
   } catch (e) {
     console.error('handle text after time error', e)
   }
-  // console.log("========matchResult========", {matchResult, timestamp, formattedContent});
   return { timestamp, formattedContent }
 }
 

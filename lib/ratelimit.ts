@@ -44,18 +44,14 @@ export class Ratelimit {
   private window: number
   private prefix: string
 
-  constructor(config: {
-    redis: Redis
-    limiter: { limit: number; window: string }
-    analytics?: boolean
-  }) {
+  constructor(config: { redis: Redis; limiter: { limit: number; window: string }; analytics?: boolean }) {
     this.redis = config.redis
     this.limit = config.limiter.limit
     this.window = parseWindow(config.limiter.window)
     this.prefix = '@upstash/ratelimit'
   }
 
-  async limit(identifier: string): Promise<{ success: boolean; remaining: number }> {
+  async checkLimit(identifier: string): Promise<{ success: boolean; remaining: number }> {
     const key = `${this.prefix}:${identifier}`
     const now = Math.floor(Date.now() / 1000)
     const windowStart = Math.floor(now / this.window) * this.window
@@ -64,7 +60,7 @@ export class Ratelimit {
     try {
       // 使用Redis的INCR和EXPIRE实现固定窗口速率限制
       const count = await this.redis.incr(windowKey)
-      
+
       // 如果是第一次访问，设置过期时间
       if (count === 1) {
         await this.redis.expire(windowKey, this.window)
@@ -112,4 +108,3 @@ export const ratelimitForFreeAccounts = new Ratelimit({
 
 // 导出Redis客户端供其他模块使用
 export { redis }
-

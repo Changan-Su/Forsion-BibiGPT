@@ -6,6 +6,7 @@ import { RATE_LIMIT_COUNT } from '~/utils/constants'
 export function useSummarize(showSingIn: (show: boolean) => void, enableStream: boolean = true) {
   const [loading, setLoading] = useState(false)
   const [summary, setSummary] = useState<string>('')
+  const [videoDuration, setVideoDuration] = useState<number | undefined>(undefined)
   const { toast } = useToast()
 
   const resetSummary = () => {
@@ -35,7 +36,13 @@ export function useSummarize(showSingIn: (show: boolean) => void, enableStream: 
 
       if (!response.ok) {
         console.log('error', response)
-        if (response.status === 501) {
+        if (response.status === 400) {
+          const errorJson = await response.json()
+          toast({
+            title: errorJson.error || '啊叻？',
+            description: errorJson.errorMessage || '此视频暂无字幕，请尝试其他视频。',
+          })
+        } else if (response.status === 501) {
           toast({
             title: '啊叻？视频字幕不见了？！',
             description: `\n（这个视频太短了...\n或者还没有字幕哦！）`,
@@ -78,12 +85,44 @@ export function useSummarize(showSingIn: (show: boolean) => void, enableStream: 
         const reader = data.getReader()
         const decoder = new TextDecoder()
         let done = false
+        let metadataExtracted = false
 
         while (!done) {
           const { value, done: doneReading } = await reader.read()
           done = doneReading
-          const chunkValue = decoder.decode(value)
-          setSummary((prev) => prev + chunkValue)
+          if (!value) continue
+
+          let chunk = decoder.decode(value, { stream: true })
+
+          // 只在第一次chunk中查找并提取元数据
+          if (!metadataExtracted && chunk.includes('data: ')) {
+            // 尝试提取元数据（SSE格式：data: {...}\n\n）
+            // 匹配完整的JSON对象，包括嵌套的duration数字
+            const metadataMatch = chunk.match(/data:\s*(\{"type":"metadata","duration":\d+\})\s*\n\n/)
+            if (metadataMatch) {
+              try {
+                const metadata = JSON.parse(metadataMatch[1])
+                if (metadata.type === 'metadata' && typeof metadata.duration === 'number') {
+                  setVideoDuration(metadata.duration)
+                  // 移除元数据部分（包括前后的换行）
+                  chunk = chunk.replace(/data:\s*\{[^}]+\}\s*\n\n/, '')
+                  metadataExtracted = true
+                }
+              } catch (e) {
+                // 解析失败，继续处理
+                metadataExtracted = true
+              }
+            } else {
+              metadataExtracted = true
+            }
+          } else {
+            metadataExtracted = true
+          }
+
+          // 添加内容到summary
+          if (chunk) {
+            setSummary((prev) => prev + chunk)
+          }
         }
         setLoading(false)
         return
@@ -111,5 +150,5 @@ export function useSummarize(showSingIn: (show: boolean) => void, enableStream: 
       setLoading(false)
     }
   }
-  return { loading, summary, resetSummary, summarize }
+  return { loading, summary, resetSummary, summarize, setSummary, videoDuration }
 }
