@@ -124,10 +124,17 @@ Requirements:
 6. Include the three section headers: ## 阅读全文, ## AI 润色, ## AI 改写 (these are just headers, no content needed)
 7. 视频主题: One line title
 8. 时间线总结: Format as "Timestamp - emoji Title" followed by "Screenshot at Xs" and detailed paragraph
-9. Ensure all timestamps are accurate and correspond to the video content
-10. There may be typos in the subtitles, please correct them
-11. All content should be in ${language} Language
-12. Write naturally and engagingly, similar to the example format
+9. **CRITICAL TIMESTAMP HANDLING**: 
+   - If the transcript contains timestamps in formats like "[MM:SS]" (e.g., "[0:49]"), "[HH:MM:SS]" (e.g., "[1:23:45]"), or "[seconds]" (e.g., "[49]"), you MUST extract these timestamps from the transcript
+   - When generating highlights, ALWAYS include the corresponding timestamp at the END of each highlight in MM:SS or HH:MM:SS format
+   - When generating reflections, ALWAYS include the corresponding timestamp at the END of each answer in MM:SS or HH:MM:SS format
+   - Example: If transcript has "[0:49] passengers enjoy afternoon tea", your highlight should be "☕️ passengers enjoy afternoon tea 0:49"
+   - Example: If transcript has "[49] content", convert to "0:49" format
+   - If the transcript does NOT contain timestamps, you can omit timestamps or estimate based on content position
+10. Ensure all timestamps are accurate and correspond to the video content
+11. There may be typos in the subtitles, please correct them
+12. All content should be in ${language} Language
+13. Write naturally and engagingly, similar to the example format
 
 Title: "${videoTitle}"
 Transcript: "${videoTranscript}"

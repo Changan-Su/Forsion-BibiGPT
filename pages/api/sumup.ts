@@ -22,33 +22,49 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: 'No videoId in the request' })
   }
 
-  const { title, subtitlesArray, descriptionText, duration } = await fetchSubtitle(videoConfig, shouldShowTimestamp)
-  if (!subtitlesArray && !descriptionText) {
-    console.error('No subtitle in the video: ', videoId)
-    // 改为 400（客户端错误）而不是 501（服务器错误）
-    return res.status(400).json({
-      error: '此视频暂无字幕或简介',
-      errorMessage: '抱歉，该视频没有字幕或简介内容。请尝试其他视频哦！',
-    })
-  }
-
-  const inputText = subtitlesArray ? getSmallSizeTranscripts(subtitlesArray, subtitlesArray) : descriptionText
-
-  // 使用新的结构化总结prompt（默认使用新格式）
-  const useStructuredSummary = true // 默认启用结构化总结
-  const userPrompt = useStructuredSummary
-    ? shouldShowTimestamp
-      ? getStructuredSummaryWithTimestampPrompt(title, inputText, videoConfig, duration)
-      : getStructuredSummaryPrompt(title, inputText, videoConfig, duration)
-    : shouldShowTimestamp
-    ? getUserSubtitleWithTimestampPrompt(title, inputText, videoConfig)
-    : getUserSubtitlePrompt(title, inputText, videoConfig)
-
-  if (isDev) {
-    console.log('final user prompt: ', userPrompt)
-  }
+  // 启用音频转文字功能（当字幕不存在时）
+  const enableAudioTranscription = process.env.ENABLE_AUDIO_TRANSCRIPTION !== 'false' // 默认启用
 
   try {
+    const { title, subtitlesArray, descriptionText, duration, source } = await fetchSubtitle(
+      videoConfig,
+      shouldShowTimestamp,
+      userKey,
+      enableAudioTranscription,
+    )
+
+    if (!subtitlesArray && !descriptionText) {
+      console.error('No subtitle in the video and audio transcription failed: ', videoId)
+      return res.status(400).json({
+        error: '此视频暂无字幕或简介',
+        errorMessage:
+          source === 'audio'
+            ? '抱歉，该视频没有字幕，且音频转文字失败。请检查服务器配置（需要安装 yt-dlp）或尝试其他视频。'
+            : '抱歉，该视频没有字幕或简介内容。系统已尝试音频转文字，但未成功。请尝试其他视频或检查配置。',
+      })
+    }
+
+    // 如果使用了音频转文字，记录日志
+    if (source === 'audio' && isDev) {
+      console.log('使用音频转文字功能获取内容')
+    }
+
+    const inputText = subtitlesArray ? getSmallSizeTranscripts(subtitlesArray, subtitlesArray) : descriptionText
+
+    // 使用新的结构化总结prompt（默认使用新格式）
+    const useStructuredSummary = true // 默认启用结构化总结
+    const userPrompt = useStructuredSummary
+      ? shouldShowTimestamp
+        ? getStructuredSummaryWithTimestampPrompt(title, inputText, videoConfig, duration)
+        : getStructuredSummaryPrompt(title, inputText, videoConfig, duration)
+      : shouldShowTimestamp
+      ? getUserSubtitleWithTimestampPrompt(title, inputText, videoConfig)
+      : getUserSubtitlePrompt(title, inputText, videoConfig)
+
+    if (isDev) {
+      console.log('final user prompt: ', userPrompt)
+    }
+
     const stream = true
     const openAiPayload = {
       model: 'gpt-4o-mini',

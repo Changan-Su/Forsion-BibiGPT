@@ -14,20 +14,32 @@
 
 ## ✨ 项目亮点 / Features
 
-* 🔍 **自动内容摘要**
+- 🔍 **自动内容摘要**
   从音频 / 视频提取语音/文字，基于 AI 生成 **摘要与要点**。
 
-* 💬 **智能对话交互**
+- 🎤 **音频转文字功能（新）**
+  当视频没有字幕时，自动使用 Whisper API 将音频转换为文字，让无字幕视频也能被识别和总结。
+
+- 📄 **直接显示总结内容（新）**
+  AI 生成摘要后直接在页面展示，无需额外操作，快速获取核心信息。
+
+- 🎬 **内置视频播放器（新）**
+  支持直接在应用内播放目标视频，无需跳转外部平台，提升使用流畅度。
+
+- 📚 **历史记录留存（新）**
+  自动保存用户过往的音视频摘要记录，方便后续回溯、查看和管理。
+
+- 💬 **智能对话交互**
   用户可以针对内容进行问答式对话，像 ChatGPT 一样互动。
 
-* 🧠 **支持多种平台内容**
+- 🧠 **支持多种平台内容**
   包括：Bilibili、YouTube、Twitter、TikTok、本地文件、播客、会议等。
 
-* ⚙️ **集成 Forsion 平台能力（本 Fork 的核心价值）**
+- ⚙️ **集成 Forsion 平台能力（本 Fork 的核心价值）**
 
-  * Forsion 模型支持
-  * 更灵活的 API 调度与费用控制
-  * 功能扩展接口
+  - Forsion 模型支持
+  - 更灵活的 API 调度与费用控制
+  - 功能扩展接口
 
 ---
 
@@ -45,14 +57,18 @@
 
 ## 🧩 核心功能（Forsion 版本）/ Core Features
 
-| 功能 / Feature | 描述 / Description |
-| ---------- | --------------------------- |
-| 内容提取 / Content Extraction | 自动解析音视频语音流 |
-| AI 摘要 / AI Summary | 自动生成简洁内容总结 |
-| 对话问答 / Q&A Chat | 提供智能问答交互 |
-| Forsion 接入 / Forsion Integration | 使用 Forsion 模型或 API 替代默认 GPT |
-| 多平台适配 / Multi-Platform | 支持各种来源媒体内容 |
-| 可扩展 / Extensible | 模块化插件与扩展支持 |
+| 功能 / Feature                         | 描述 / Description                                          |
+| -------------------------------------- | ----------------------------------------------------------- |
+| 内容提取 / Content Extraction          | 自动解析音视频语音流                                        |
+| 音频转文字 / Audio Transcription       | 当视频没有字幕时，使用 Whisper API 自动转录音频为文字       |
+| AI 摘要 / AI Summary                   | 自动生成简洁内容总结                                        |
+| 直接展示总结 / Direct Summary Display  | AI 生成摘要后直接在页面展示，无需额外操作，快速获取核心信息 |
+| 内置视频播放器 / Built-in Video Player | 支持直接在应用内播放目标视频，无需跳转外部平台              |
+| 历史记录管理 / History Management      | 自动保存用户过往的音视频摘要记录，方便回溯、查看和管理      |
+| 对话问答 / Q&A Chat                    | 提供智能问答交互                                            |
+| Forsion 接入 / Forsion Integration     | 使用 Forsion 模型或 API 替代默认 GPT                        |
+| 多平台适配 / Multi-Platform            | 支持各种来源媒体内容                                        |
+| 可扩展 / Extensible                    | 模块化插件与扩展支持                                        |
 
 ---
 
@@ -71,6 +87,7 @@ This project uses the [OpenAI ChatGPT API](https://openai.com/api/) (specificall
 本项目使用 [OpenAI ChatGPT API](https://openai.com/api/)（gpt-3.5-turbo）和 [Vercel Edge 函数](https://vercel.com/features/edge-functions) 实现流式响应，并使用 [Upstash](https://console.upstash.com/) 进行 Redis 缓存和速率限制。它获取 Bilibili/YouTube 视频内容，通过 Vercel Edge 函数将内容发送到 GPT-3 API 进行摘要，然后将响应流式传输回应用程序。
 
 **Forsion 版本增强：**
+
 - 支持切换使用 Forsion 平台的模型 API
 - 更灵活的请求管理和费用控制
 - 优化后的架构，支持高并发场景
@@ -118,16 +135,19 @@ OPENAI_API_BASE_URL=https://api.openai.com/v1
 ```
 
 **获取方法 / How to Get:**
+
 - 访问 [OpenAI Platform](https://platform.openai.com/account/api-keys)
 - 登录并创建新的 API Key
 - 复制 Key 并填入 `OPENAI_API_KEY`
 
 **自定义 API 端点 / Custom API Endpoint:**
+
 - `OPENAI_API_BASE_URL` 支持自定义 OpenAI 兼容的 API 端点
 - 示例：`https://api.openai.com/v1`、`http://localhost:1234/v1`、`https://api.example.com/v1`
 - 支持 Forsion 平台：设置为 Forsion 的 API 端点即可
 
 **多 API Key 支持 / Multiple API Keys:**
+
 - 支持配置多个 API Key，用逗号分隔：`OPENAI_API_KEY=sk-xxx1,sk-xxx2,sk-xxx3`
 - 系统会自动随机选择使用
 
@@ -142,6 +162,7 @@ BILIBILI_SESSION_TOKEN=your_session_token
 ```
 
 **获取方法 / How to Get:**
+
 1. 访问 [Bilibili](https://www.bilibili.com) 并登录
 2. 按 `F12` 打开开发者控制台
 3. 导航至 `Application` → `Cookies` → `https://www.bilibili.com`
@@ -159,6 +180,7 @@ SAVESUBS_X_AUTH_TOKEN=your_auth_token
 ```
 
 **获取方法 / How to Get:**
+
 1. 访问 [SaveSubs](https://savesubs.com)
 2. 按 `F12` 打开开发者控制台
 3. 导航至 `Application` → `Cookies` → `https://savesubs.com`
@@ -183,11 +205,13 @@ REDIS_DB=0
 ```
 
 **本地 Redis 安装 / Local Redis Installation:**
+
 - **macOS**: `brew install redis` 然后 `brew services start redis`
 - **Ubuntu/Debian**: `sudo apt-get install redis-server` 然后 `sudo systemctl start redis`
 - **Windows**: 下载 Redis for Windows 或使用 WSL
 
 **Docker 方式（推荐）:**
+
 - 项目已包含 Docker Compose 配置，直接运行 `docker compose up -d` 即可
 - Redis 服务会自动启动，使用 `redis:6379` 作为连接地址
 
@@ -204,6 +228,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://${SUPABASE_HOSTNAME}
 ```
 
 **获取方法 / How to Get:**
+
 1. 访问 [Supabase](https://supabase.com/) 并登录
 2. 创建新项目（Create New Project）
 3. 进入项目设置（Settings / 齿轮图标）
@@ -224,6 +249,7 @@ SENTRY_AUTH_TOKEN=your_sentry_token
 ```
 
 **获取方法 / How to Get:**
+
 - 访问 [Sentry](https://docs.sentry.io/product/cli/configuration)
 - 创建项目并获取 Auth Token
 
@@ -238,6 +264,7 @@ LEMON_API_KEY=your_lemon_api_key
 ```
 
 **获取方法 / How to Get:**
+
 - 访问 [Lemon Squeezy](https://www.lemonsqueezy.com)
 - 在 API 设置中创建 API Key
 
@@ -252,10 +279,30 @@ NEXT_PUBLIC_SEGMENT_WRITEKEY=your_segment_writekey
 ```
 
 **获取方法 / How to Get:**
+
 - 访问 [Segment](https://segment.com)
 - 创建项目并获取 Write Key
 
-##### 9. **站点配置** / Site Configuration
+##### 9. **音频转文字配置** / Audio Transcription Configuration
+
+启用音频转文字功能（当视频没有字幕时自动使用 Whisper API 转录音频）：
+
+```env
+# 启用/禁用音频转文字功能（默认：启用）
+ENABLE_AUDIO_TRANSCRIPTION=true
+```
+
+**注意 / Note:**
+
+- 音频转文字功能需要安装 **yt-dlp** 工具来提取视频音频流
+- 安装方法：
+  - **macOS**: `brew install yt-dlp`
+  - **Linux**: `pip install yt-dlp` 或 `sudo apt install yt-dlp`
+  - **Windows**: `pip install yt-dlp` 或从 [yt-dlp GitHub](https://github.com/yt-dlp/yt-dlp) 下载
+- 音频文件大小限制：25MB（Whisper API 限制）
+- 此功能会消耗额外的 OpenAI API 调用（Whisper API），请注意成本
+
+##### 10. **站点配置** / Site Configuration
 
 ```env
 NEXT_PUBLIC_SITE_URL=https://your-domain.com
@@ -269,6 +316,7 @@ INTERNAL_API_HOSTNAME=api.example.com
 See [`.example.env`](.example.env) file for complete configuration template.
 
 > 💡 **提示 / Tips:**
+>
 > - 详细的运行步骤请参考：[中文部署文档](./deploy-ch.md)
 > - Redis 配置说明请参考：[Redis 设置文档](./REDIS_SETUP.md)
 > - 所有包含 `NEXT_PUBLIC_` 前缀的变量会暴露到客户端，请勿存放敏感信息
@@ -365,16 +413,17 @@ Setup the env variables, by following the `./example.env` file.
 
 Contributions are welcome in the following ways:
 
-* 🔧 提交 PR 修复 bug 或增强功能 / Submit PRs to fix bugs or enhance features
-* 📖 优化文档（本 README / 使用指南）/ Improve documentation (this README / usage guides)
-* 📊 添加测试覆盖 / Add test coverage
-* 🌐 增加更多平台支持（如播客、会议流媒体）/ Add support for more platforms (podcasts, meeting streams, etc.)
+- 🔧 提交 PR 修复 bug 或增强功能 / Submit PRs to fix bugs or enhance features
+- 📖 优化文档（本 README / 使用指南）/ Improve documentation (this README / usage guides)
+- 📊 添加测试覆盖 / Add test coverage
+- 🌐 增加更多平台支持（如播客、会议流媒体）/ Add support for more platforms (podcasts, meeting streams, etc.)
 
 ---
 
 ## 🤯 灵感来源 / Inspiration
 
 Inspired by:
+
 - [Nutlope/news-summarizer](https://github.com/Nutlope/news-summarizer)
 - [zhengbangbo/chat-simplifier](https://github.com/zhengbangbo/chat-simplifier/)
 - [lxfater/BilibiliSummary](https://github.com/lxfater/BilibiliSummary)

@@ -17,7 +17,7 @@ export type VideoConfig = {
 export enum VideoService {
   Bilibili = 'bilibili',
   Youtube = 'youtube',
-  // todo: integrate with whisper API
+  // ✅ Whisper API 已集成，支持音频转文字
   Podcast = 'podcast',
   Meeting = 'meeting',
   LocalVideo = 'local-video',
