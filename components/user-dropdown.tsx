@@ -1,6 +1,6 @@
 import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react'
 import { motion } from 'framer-motion'
-import { Clover, Edit, LayoutDashboard, LogOut, ShoppingBag } from 'lucide-react'
+import { Clover, Edit, LayoutDashboard, LogOut, ShoppingBag, Settings } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 import { Popover, PopoverTrigger, PopoverContent } from '~/components/shared/popover'
@@ -49,6 +49,13 @@ export default function UserDropdown() {
             >
               <Edit className="h-4 w-4" />
               <p className="text-sm">导出笔记</p>
+            </Link>
+            <Link
+              href="/user/preferences"
+              className="relative flex w-full items-center justify-start space-x-2 rounded-md p-2 text-left text-sm transition-all duration-75 hover:bg-gray-100"
+            >
+              <Settings className="h-4 w-4" />
+              <p className="text-sm">个性化设置</p>
             </Link>
             <Link
               href="/shop"

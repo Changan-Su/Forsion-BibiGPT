@@ -1,6 +1,7 @@
 import { fetchBilibiliSubtitle } from './bilibili/fetchBilibiliSubtitle'
 import { CommonSubtitleItem, VideoConfig, VideoService } from './types'
 import { fetchYoutubeSubtitle } from './youtube/fetchYoutubeSubtitle'
+import { fetchDouyinSubtitle } from './douyin/fetchDouyinSubtitle'
 import { fetchAudio, checkAudioExtractionSupport } from './audio/fetchAudioUrl'
 import { transcribeVideoAudio } from './audio/transcribeAudio'
 import { isDev } from '~/utils/env'
@@ -32,13 +33,33 @@ export async function fetchSubtitle(
   }
 
   // 首先尝试提取字幕
-  if (service === VideoService.Youtube) {
-    result = await fetchYoutubeSubtitle(videoId, shouldShowTimestamp)
-  } else {
-    result = await fetchBilibiliSubtitle(videoId, pageNumber, shouldShowTimestamp)
+  try {
+    if (service === VideoService.Youtube) {
+      result = await fetchYoutubeSubtitle(videoId, shouldShowTimestamp)
+    } else if (service === VideoService.Douyin) {
+      result = await fetchDouyinSubtitle(videoId, shouldShowTimestamp)
+    } else {
+      result = await fetchBilibiliSubtitle(videoId, pageNumber, shouldShowTimestamp)
+    }
+    result.source = 'subtitle'
+  } catch (error: any) {
+    console.error('字幕提取失败:', error)
+    isDev &&
+      console.error('字幕提取错误详情:', {
+        service,
+        videoId,
+        error: error.message,
+        stack: error.stack,
+      })
+    // 如果字幕提取失败，返回空结果，尝试音频转文字
+    result = {
+      title: videoId,
+      subtitlesArray: null,
+      descriptionText: undefined,
+      duration: undefined,
+      source: 'subtitle',
+    }
   }
-
-  result.source = 'subtitle'
 
   // 如果字幕提取成功，直接返回
   if (result.subtitlesArray && result.subtitlesArray.length > 0) {

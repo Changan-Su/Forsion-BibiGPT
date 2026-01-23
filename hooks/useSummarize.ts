@@ -7,10 +7,12 @@ export function useSummarize(showSingIn: (show: boolean) => void, enableStream: 
   const [loading, setLoading] = useState(false)
   const [summary, setSummary] = useState<string>('')
   const [videoDuration, setVideoDuration] = useState<number | undefined>(undefined)
+  const [videoTitle, setVideoTitle] = useState<string>('')
   const { toast } = useToast()
 
   const resetSummary = () => {
     setSummary('')
+    setVideoTitle('')
   }
 
   const summarize = async (videoConfig: VideoConfig, userConfig: UserConfig) => {
@@ -97,18 +99,25 @@ export function useSummarize(showSingIn: (show: boolean) => void, enableStream: 
           // 只在第一次chunk中查找并提取元数据
           if (!metadataExtracted && chunk.includes('data: ')) {
             // 尝试提取元数据（SSE格式：data: {...}\n\n）
-            // 匹配完整的JSON对象，包括嵌套的duration数字
-            const metadataMatch = chunk.match(/data:\s*(\{"type":"metadata","duration":\d+\})\s*\n\n/)
-            if (metadataMatch) {
+            // 使用更智能的方式匹配完整的JSON对象
+            const dataMatch = chunk.match(/data:\s*(\{.*?\})\s*\n\n/s)
+            if (dataMatch) {
               try {
-                const metadata = JSON.parse(metadataMatch[1])
-                if (metadata.type === 'metadata' && typeof metadata.duration === 'number') {
-                  setVideoDuration(metadata.duration)
+                const metadata = JSON.parse(dataMatch[1])
+                if (metadata.type === 'metadata') {
+                  if (typeof metadata.duration === 'number') {
+                    setVideoDuration(metadata.duration)
+                  }
+                  if (typeof metadata.title === 'string' && metadata.title) {
+                    console.log('[useSummarize] 接收到视频标题:', metadata.title)
+                    setVideoTitle(metadata.title)
+                  }
                   // 移除元数据部分（包括前后的换行）
-                  chunk = chunk.replace(/data:\s*\{[^}]+\}\s*\n\n/, '')
+                  chunk = chunk.replace(/data:\s*\{.*?\}\s*\n\n/s, '')
                   metadataExtracted = true
                 }
               } catch (e) {
+                console.error('[useSummarize] 解析元数据失败:', e, 'chunk:', chunk.substring(0, 200))
                 // 解析失败，继续处理
                 metadataExtracted = true
               }
@@ -150,5 +159,5 @@ export function useSummarize(showSingIn: (show: boolean) => void, enableStream: 
       setLoading(false)
     }
   }
-  return { loading, summary, resetSummary, summarize, setSummary, videoDuration }
+  return { loading, summary, resetSummary, summarize, setSummary, videoDuration, videoTitle, setVideoTitle }
 }

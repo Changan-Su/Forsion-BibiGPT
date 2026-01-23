@@ -454,3 +454,108 @@ export function parseStructuredSummary(summary: string, maxDurationSeconds?: num
 
   return result
 }
+
+/**
+ * 将结构化总结数据转换为思维导图 markdown 格式
+ * @param structuredData 结构化总结数据
+ * @returns 思维导图 markdown 字符串
+ */
+export function structuredSummaryToMindMapMarkdown(structuredData: StructuredSummary): string {
+  const lines: string[] = []
+
+  // 根节点：视频主题或摘要
+  const rootTitle = structuredData.topic || '视频总结'
+  lines.push(`# ${rootTitle}`)
+
+  // 摘要分支
+  if (structuredData.summary) {
+    lines.push('')
+    lines.push('## 摘要')
+    // 将摘要按句号分割，每句作为子节点
+    const summarySentences = structuredData.summary
+      .split(/[。！？\n]/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0)
+    if (summarySentences.length > 0) {
+      summarySentences.forEach((sentence) => {
+        lines.push(`- ${sentence}`)
+      })
+    } else {
+      lines.push(`- ${structuredData.summary}`)
+    }
+  }
+
+  // 亮点分支
+  if (structuredData.highlights.length > 0) {
+    lines.push('')
+    lines.push('## 亮点')
+    structuredData.highlights.forEach((highlight) => {
+      const emoji = highlight.emoji || '✨'
+      const timestamp = highlight.timestamp ? ` (${highlight.timestamp})` : ''
+      lines.push(`- ${emoji} ${highlight.content}${timestamp}`)
+    })
+  }
+
+  // 思考分支
+  if (structuredData.reflections.length > 0) {
+    lines.push('')
+    lines.push('## 思考')
+    structuredData.reflections.forEach((reflection) => {
+      lines.push(`- ${reflection.question}`)
+      const timestamp = reflection.timestamp ? ` (${reflection.timestamp})` : ''
+      // 将答案按句号分割，每句作为子节点
+      const answerSentences = reflection.answer
+        .split(/[。！？\n]/)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+      if (answerSentences.length > 0) {
+        answerSentences.forEach((sentence, index) => {
+          if (index === answerSentences.length - 1 && timestamp) {
+            lines.push(`  - ${sentence}${timestamp}`)
+          } else {
+            lines.push(`  - ${sentence}`)
+          }
+        })
+      } else {
+        lines.push(`  - ${reflection.answer}${timestamp}`)
+      }
+    })
+  }
+
+  // 术语解释分支
+  if (structuredData.terms.length > 0) {
+    lines.push('')
+    lines.push('## 术语解释')
+    structuredData.terms.forEach((term) => {
+      lines.push(`- ${term.term}`)
+      lines.push(`  - ${term.explanation}`)
+    })
+  }
+
+  // 时间线总结分支
+  if (structuredData.timeline.length > 0) {
+    lines.push('')
+    lines.push('## 时间线总结')
+    structuredData.timeline.forEach((item) => {
+      // 提取标题（第一行或第一个句子）
+      const contentLines = item.content.split('\n\n')
+      const title = contentLines[0] || item.content
+      const description = contentLines.slice(1).join('\n\n')
+      lines.push(`- ${item.timestamp} - ${title}`)
+      if (item.screenshot) {
+        lines.push(`  - ${item.screenshot}`)
+      }
+      if (description) {
+        const descSentences = description
+          .split(/[。！？\n]/)
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0)
+        descSentences.forEach((sentence) => {
+          lines.push(`  - ${sentence}`)
+        })
+      }
+    })
+  }
+
+  return lines.join('\n')
+}

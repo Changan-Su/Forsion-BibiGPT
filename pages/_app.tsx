@@ -12,7 +12,6 @@ import { TailwindIndicator } from '~/components/tailwind-indicator'
 import { Toaster } from '~/components/ui/toaster'
 import { TooltipProvider } from '~/components/ui/tooltip'
 import { cn } from '~/lib/utils'
-import Footer from '../components/Footer'
 import Header from '../components/Header'
 import '../styles/globals.css'
 import '../styles/markdown.css'
@@ -46,7 +45,6 @@ function MyApp({
                 <Analytics />
                 <CommandMenu />
               </main>
-              <Footer />
             </div>
             <TailwindIndicator />
             <Toaster />

@@ -6,7 +6,6 @@ import React, { useEffect, useState, useRef } from 'react'
 import { SubmitHandler, useForm } from 'react-hook-form'
 import useFormPersist from 'react-hook-form-persist'
 import { useAnalytics } from '~/components/context/analytics'
-import { PromptOptions } from '~/components/PromptOptions'
 import { SubmitButton } from '~/components/SubmitButton'
 import { SummaryDisplay } from '~/components/SummaryDisplay'
 import { SummaryResult } from '~/components/SummaryResult'
@@ -22,11 +21,14 @@ import { useToast } from '~/hooks/use-toast'
 import { useLocalStorage } from '~/hooks/useLocalStorage'
 import { useSummarize } from '~/hooks/useSummarize'
 import { useVideoHistory, type VideoHistory } from '~/hooks/useVideoHistory'
+import { useUserPreferences } from '~/hooks/useUserPreferences'
+import { useSmartRecommendation } from '~/hooks/useSmartRecommendation'
 import { VideoService } from '~/lib/types'
 import { DEFAULT_LANGUAGE } from '~/utils/constants/language'
-import { extractPage, extractUrl } from '~/utils/extractUrl'
+import { extractPage, extractUrl, extractDouyinVideoId } from '~/utils/extractUrl'
 import { getVideoIdFromUrl } from '~/utils/getVideoIdFromUrl'
 import { VideoConfigSchema, videoConfigSchema } from '~/utils/schemas/video'
+import { parseStructuredSummary } from '~/utils/formatSummary'
 
 export const Home: NextPage<{
   showSingIn: (show: boolean) => void
@@ -67,13 +69,21 @@ export const Home: NextPage<{
   const [useNewLayout, setUseNewLayout] = useState(true) // 控制是否使用新布局
   const [videoPlayerController, setVideoPlayerController] = useState<{ seekTo: (seconds: number) => void } | null>(null)
   const isLoadingFromHistoryRef = useRef(false) // 使用 ref 来标记是否正在从历史记录加载，避免异步更新问题
-  const { loading, summary, resetSummary, summarize, setSummary, videoDuration } = useSummarize(
-    showSingIn,
-    getValues('enableStream'),
-  )
+  const {
+    loading,
+    summary,
+    resetSummary,
+    summarize,
+    setSummary,
+    videoDuration,
+    videoTitle: apiVideoTitle,
+    setVideoTitle: setApiVideoTitle,
+  } = useSummarize(showSingIn, getValues('enableStream'))
   const { toast } = useToast()
   const { analytics } = useAnalytics()
   const { addToHistory } = useVideoHistory()
+  const { recordConfigUsage } = useUserPreferences()
+  const { recommendConfigByVideoType } = useSmartRecommendation()
 
   useFormPersist('video-summary-config-storage', {
     watch,
@@ -105,10 +115,14 @@ export const Home: NextPage<{
 
   const validateUrlFromAddressBar = (url?: string) => {
     const videoUrl = url || currentVideoUrl
-    if (!(videoUrl.includes('bilibili.com/video') || videoUrl.includes('youtube.com'))) {
+    // 支持多种YouTube URL格式: youtube.com, youtu.be
+    const isBilibili = videoUrl.includes('bilibili.com/video')
+    const isYoutube = videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')
+    const isDouyin = videoUrl.includes('douyin.com/video') || videoUrl.includes('v.douyin.com')
+    if (!isBilibili && !isYoutube && !isDouyin) {
       toast({
         title: '暂不支持此视频链接',
-        description: '请输入哔哩哔哩或YouTub视频链接，已支持b23.tv短链接',
+        description: '请输入哔哩哔哩、YouTube或抖音视频链接，已支持b23.tv短链接',
       })
       return
     }
@@ -129,6 +143,25 @@ export const Home: NextPage<{
     validateUrlFromAddressBar(url)
 
     const videoUrl = url || currentVideoUrl
+
+    // 先检查是否是抖音视频（避免被误识别为YouTube）
+    const douyinVideoId = extractDouyinVideoId(videoUrl)
+    if (douyinVideoId) {
+      setCurrentVideoId(douyinVideoId)
+      setVideoTitle(videoUrl) // 临时使用URL，后续可以从API获取
+      // 如果是短链接，传递完整URL；否则传递视频ID
+      const videoIdForApi = videoUrl.includes('v.douyin.com') ? videoUrl : douyinVideoId
+      await summarize(
+        { videoId: videoIdForApi, service: VideoService.Douyin, ...formValues },
+        { userKey, shouldShowTimestamp: shouldShowTimestamp },
+      )
+      setTimeout(() => {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
+      }, 10)
+      return
+    }
+
+    // 然后检查是否是YouTube视频
     const { id, service } = getVideoId(videoUrl)
     if (service === VideoService.Youtube && id) {
       setCurrentVideoId(id)
@@ -166,6 +199,8 @@ export const Home: NextPage<{
   }
 
   const onFormSubmit: SubmitHandler<VideoConfigSchema> = async (data) => {
+    // 记录配置使用
+    recordConfigUsage(data)
     await generateSummary(currentVideoUrl)
     analytics.track('GenerateButton Clicked')
   }
@@ -176,15 +211,68 @@ export const Home: NextPage<{
       return
     }
     if (summary && !loading && currentVideoId) {
+      // 优先从总结内容中提取视频主题
+      let displayTitle = currentVideoId // 默认使用视频ID
+
+      try {
+        // 清理总结文本，移除可能的引号和转义字符
+        let cleanSummary = summary
+        if (cleanSummary.startsWith('"') && cleanSummary.endsWith('"')) {
+          cleanSummary = cleanSummary.substring(1, cleanSummary.length - 1)
+        }
+        cleanSummary = cleanSummary.replace(/\\n/g, '\n')
+
+        // 尝试解析结构化总结，提取视频主题
+        const structuredData = parseStructuredSummary(cleanSummary)
+        if (structuredData.topic && structuredData.topic.trim()) {
+          displayTitle = structuredData.topic.trim()
+        } else {
+          // 如果解析失败，尝试直接匹配视频主题部分
+          const topicMatch = cleanSummary.match(/##\s*视频主题\s*\n+([\s\S]*?)(?=\n+##|$)/i)
+          if (topicMatch && topicMatch[1].trim()) {
+            displayTitle = topicMatch[1].trim().replace(/^-\s*/, '')
+          } else {
+            // 如果都没有，使用API返回的标题或手动设置的标题
+            const finalTitle = apiVideoTitle || videoTitle
+            if (
+              finalTitle &&
+              !finalTitle.startsWith('http://') &&
+              !finalTitle.startsWith('https://') &&
+              finalTitle !== currentVideoId &&
+              !finalTitle.match(/^BV[a-zA-Z0-9]+$/)
+            ) {
+              displayTitle = finalTitle
+            }
+          }
+        }
+      } catch (error) {
+        console.error('[保存历史记录] 提取视频主题失败:', error)
+        // 解析失败时，使用API返回的标题或手动设置的标题
+        const finalTitle = apiVideoTitle || videoTitle
+        if (
+          finalTitle &&
+          !finalTitle.startsWith('http://') &&
+          !finalTitle.startsWith('https://') &&
+          finalTitle !== currentVideoId &&
+          !finalTitle.match(/^BV[a-zA-Z0-9]+$/)
+        ) {
+          displayTitle = finalTitle
+        }
+      }
+
       addToHistory({
         videoId: currentVideoId,
         videoUrl: currentVideoUrl,
-        title: videoTitle || currentVideoUrl,
+        title: displayTitle,
         summary: summary,
-        videoService: currentVideoUrl.includes('bilibili') ? 'bilibili' : 'youtube',
+        videoService: currentVideoUrl.includes('bilibili')
+          ? 'bilibili'
+          : currentVideoUrl.includes('douyin')
+          ? 'douyin'
+          : 'youtube',
       })
     }
-  }, [summary, loading, currentVideoId, currentVideoUrl, videoTitle])
+  }, [summary, loading, currentVideoId, currentVideoUrl, videoTitle, apiVideoTitle])
 
   const handleSelectHistory = (history: VideoHistory) => {
     // 设置标记，阻止自动生成总结和添加到历史记录
@@ -196,6 +284,7 @@ export const Home: NextPage<{
     setCurrentVideoId(history.videoId)
     setCurrentVideoUrl(history.videoUrl)
     setVideoTitle(history.title || '')
+    setApiVideoTitle(history.title || '')
 
     // 重置标记，允许后续的自动生成
     setTimeout(() => {
@@ -303,7 +392,6 @@ export const Home: NextPage<{
                     </div>
                   </div>
                 </div>
-                <PromptOptions getValues={getValues} register={register} />
               </form>
             </div>
           )}
@@ -326,6 +414,18 @@ export const Home: NextPage<{
             currentVideoId={currentVideoId}
             shouldShowTimestamp={shouldShowTimestamp}
             videoPlayerController={videoPlayerController}
+            register={register}
+            getValues={getValues}
+            setValue={setValue}
+            videoService={
+              currentVideoUrl.includes('bilibili')
+                ? 'bilibili'
+                : currentVideoUrl.includes('douyin')
+                ? 'douyin'
+                : currentVideoUrl.includes('youtube') || currentVideoUrl.includes('youtu.be')
+                ? 'youtube'
+                : undefined
+            }
           />
         </div>
       </div>
@@ -367,7 +467,6 @@ export const Home: NextPage<{
               placeholder={'输入 bilibili.com/youtube.com 视频链接，按下「回车」'}
             />
             <SubmitButton loading={loading} />
-            <PromptOptions getValues={getValues} register={register} />
           </form>
 
           <SummaryDisplay

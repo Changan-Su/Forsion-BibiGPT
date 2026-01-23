@@ -17,6 +17,7 @@ export type VideoConfig = {
 export enum VideoService {
   Bilibili = 'bilibili',
   Youtube = 'youtube',
+  Douyin = 'douyin',
   // ✅ Whisper API 已集成，支持音频转文字
   Podcast = 'podcast',
   Meeting = 'meeting',

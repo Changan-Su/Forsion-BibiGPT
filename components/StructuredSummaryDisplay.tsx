@@ -10,6 +10,7 @@ import {
 } from '~/utils/formatSummary'
 import { useToast } from '~/hooks/use-toast'
 import { VideoConfig } from '~/lib/types'
+import { ShareButton } from '~/components/ShareButton'
 
 interface StructuredSummaryDisplayProps {
   summary: string
@@ -213,7 +214,7 @@ export function StructuredSummaryDisplay({
             <span className="mr-2">📝</span>
             摘要
           </h2>
-          <p className="text-lg leading-7 text-slate-700 dark:text-slate-300 whitespace-pre-line">
+          <p className="whitespace-pre-line text-lg leading-7 text-slate-700 dark:text-slate-300">
             {structuredData.summary}
           </p>
         </div>
@@ -288,7 +289,7 @@ export function StructuredSummaryDisplay({
 
               return (
                 <div key={index} className="flex items-start rounded-lg bg-white p-3 shadow-sm dark:bg-slate-800">
-                  {highlight.emoji && <span className="mr-2 text-2xl flex-shrink-0">{highlight.emoji}</span>}
+                  {highlight.emoji && <span className="mr-2 flex-shrink-0 text-2xl">{highlight.emoji}</span>}
                   <div className="flex-1">
                     <span className="text-slate-700 dark:text-slate-300">{mainContent}</span>
                     {timestampInContent && (
@@ -296,7 +297,7 @@ export function StructuredSummaryDisplay({
                         onClick={(e) => {
                           e.preventDefault()
                           e.stopPropagation()
-                          const seconds = timestampToSeconds(timestampInContent)
+                          const seconds = timestampToSeconds(timestampInContent!)
                           console.log('[亮点时间按钮] 点击:', {
                             timestampInContent,
                             seconds,
@@ -320,7 +321,7 @@ export function StructuredSummaryDisplay({
                             })
                           }
                         }}
-                        className="ml-2 inline-flex items-center rounded bg-blue-500 px-2 py-1 text-sm font-medium text-white transition-colors hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 cursor-pointer"
+                        className="ml-2 inline-flex cursor-pointer items-center rounded bg-blue-500 px-2 py-1 text-sm font-medium text-white transition-colors hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
                         title={`跳转到 ${timestampInContent}`}
                       >
                         {timestampInContent}
@@ -504,6 +505,11 @@ export function StructuredSummaryDisplay({
           </div>
         </div>
       )} */}
+
+      {/* 分享按钮 */}
+      <div className="flex justify-center pb-8">
+        <ShareButton summary={currentSummary} videoUrl={currentVideoUrl} videoId={currentVideoId} />
+      </div>
     </div>
   )
 }

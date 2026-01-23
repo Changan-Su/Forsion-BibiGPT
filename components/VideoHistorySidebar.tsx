@@ -98,7 +98,7 @@ export function VideoHistorySidebar({ onSelectHistory }: { onSelectHistory?: (hi
       )}
 
       {/* 历史列表 */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent dark:scrollbar-thumb-slate-600">
+      <div className="scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent dark:scrollbar-thumb-slate-600 flex-1 overflow-y-auto">
         <div className="space-y-2 p-3">
           {history.map((item) => (
             <div
@@ -117,28 +117,26 @@ export function VideoHistorySidebar({ onSelectHistory }: { onSelectHistory?: (hi
                 </span>
               </div>
 
-              {/* 标题 */}
+              {/* 视频标题（简介） */}
               <p
-                className="line-clamp-2 font-semibold text-slate-900 dark:text-slate-50 mb-2"
-                style={{ fontSize: '14px', lineHeight: '36px' }}
+                className="mb-3 line-clamp-2 font-semibold text-slate-900 dark:text-slate-50"
+                style={{ fontSize: '14px', lineHeight: '1.5' }}
               >
-                {item.title || item.videoId}
+                {/* 如果标题存在且不是URL格式，且不是视频ID格式（BV开头），则显示标题；否则显示视频ID */}
+                {item.title &&
+                !item.title.startsWith('http://') &&
+                !item.title.startsWith('https://') &&
+                item.title !== item.videoId &&
+                !item.title.match(/^BV[a-zA-Z0-9]+$/)
+                  ? item.title
+                  : item.videoId}
               </p>
-
-              {/* 摘要预览 */}
-              <div
-                className="mb-3 line-clamp-3 text-slate-600 dark:text-slate-400"
-                style={{ fontSize: '14px', lineHeight: '36px' }}
-              >
-                {item.summary.substring(0, 100)}
-                {item.summary.length > 100 ? '...' : ''}
-              </div>
 
               {/* 操作按钮 - 始终显示 */}
               <div className="flex gap-2">
                 <button
                   onClick={(e) => handlePlay(item, e)}
-                  className="flex-1 flex items-center justify-center gap-1 rounded bg-sky-100 px-2 py-1.5 text-xs font-semibold text-sky-700 transition hover:bg-sky-200 dark:bg-sky-900/30 dark:text-sky-300 dark:hover:bg-sky-900/50"
+                  className="flex flex-1 items-center justify-center gap-1 rounded bg-sky-100 px-2 py-1.5 text-xs font-semibold text-sky-700 transition hover:bg-sky-200 dark:bg-sky-900/30 dark:text-sky-300 dark:hover:bg-sky-900/50"
                   title="查看总结"
                 >
                   <Play className="h-3 w-3" />

@@ -26,6 +26,7 @@ export function CenterContent({
   const [volume, setVolume] = useState(100)
   const [quality, setQuality] = useState('high')
   const isBilibili = videoUrl?.includes('bilibili.com')
+  const isDouyin = videoUrl?.includes('douyin.com')
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const youtubeIframeRef = useRef<HTMLIFrameElement>(null)
 
@@ -82,9 +83,9 @@ export function CenterContent({
 
   // YouTube视频ID提取
   const youtubeVideoId = useMemo(() => {
-    if (!videoId || isBilibili) return null
+    if (!videoId || isBilibili || isDouyin) return null
     return videoId
-  }, [videoId, isBilibili])
+  }, [videoId, isBilibili, isDouyin])
 
   // 实现视频跳转功能
   const seekTo = useCallback(
@@ -171,16 +172,35 @@ export function CenterContent({
         // YouTube 播放器通过 postMessage 控制
         const iframe = youtubeIframeRef.current
         if (iframe.contentWindow) {
-          console.log('[seekTo] YouTube跳转:', { seconds })
+          console.log('[seekTo] YouTube跳转:', { seconds, iframeReady: !!iframe.contentWindow })
+
           // YouTube IFrame API 命令
-          iframe.contentWindow.postMessage(
-            {
+          // 注意：YouTube IFrame API 要求消息必须是字符串格式
+          try {
+            // 方法1：使用 JSON.stringify 包装消息（推荐）
+            const message = JSON.stringify({
               event: 'command',
               func: 'seekTo',
               args: [seconds, true], // true 表示允许搜索（即使视频未加载）
-            },
-            'https://www.youtube.com',
-          )
+            })
+
+            console.log('[seekTo] 发送 YouTube postMessage:', message)
+            iframe.contentWindow.postMessage(message, 'https://www.youtube.com')
+
+            // 如果上面的方法不工作，尝试备用方法：直接修改 iframe src（类似 Bilibili）
+            // 但 YouTube 不支持在 URL 中直接设置时间，所以主要依赖 postMessage
+          } catch (e) {
+            console.error('[seekTo] YouTube postMessage 失败:', e)
+            // 备用方案：尝试重新加载 iframe 并添加 start 参数
+            // 注意：YouTube embed URL 使用 start 参数而不是 t 参数
+            const currentSrc = iframe.src
+            const url = new URL(currentSrc)
+            url.searchParams.set('start', String(Math.floor(seconds)))
+            console.log('[seekTo] 尝试使用 URL 方式跳转:', url.toString())
+            iframe.src = url.toString()
+          }
+        } else {
+          console.warn('[seekTo] YouTube iframe contentWindow 不可用')
         }
       } else {
         console.warn('[seekTo] 无法跳转：播放器未就绪', {
@@ -234,16 +254,21 @@ export function CenterContent({
             <iframe
               ref={youtubeIframeRef}
               className="h-full w-full"
-              src={`https://www.youtube.com/embed/${youtubeVideoId}?enablejsapi=1`}
+              src={`https://www.youtube.com/embed/${youtubeVideoId}?enablejsapi=1&origin=${
+                typeof window !== 'undefined' ? window.location.origin : 'http://localhost:2014'
+              }`}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
+              onLoad={() => {
+                console.log('[CenterContent] YouTube iframe 加载完成')
+              }}
             />
           </div>
         ) : (
           <div className="flex aspect-video w-full items-center justify-center bg-slate-900 text-slate-400">
             {isLoading ? (
               <div className="text-center">
-                <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-sky-200 border-t-sky-600 mx-auto"></div>
+                <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-sky-200 border-t-sky-600"></div>
                 <p>正在加载视频...</p>
               </div>
             ) : (
@@ -257,7 +282,7 @@ export function CenterContent({
 
         {/* 注意：B站和YouTube的iframe播放器自带控制栏，这里显示额外的控制信息 */}
         {(bilibiliPlayerUrl || youtubeVideoId) && (
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 hover:opacity-100 transition-opacity">
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 transition-opacity hover:opacity-100">
             <div className="flex items-center justify-between px-4 text-xs text-white/80">
               <span>{isBilibili ? 'B站视频' : 'YouTube视频'}</span>
               <span>清晰度: {quality === 'high' ? '高清' : quality}</span>

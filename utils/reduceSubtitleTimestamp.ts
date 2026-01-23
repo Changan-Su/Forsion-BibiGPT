@@ -4,12 +4,15 @@ export type YoutubeSubtitleItem = { start: number; lines: string[] }
 /*{ "from": 16.669, "content": "让ppt变得更加精彩" },*/
 export type BilibiliSubtitleItem = { from: number; content: string }
 
-export function reduceYoutubeSubtitleTimestamp(subtitles: Array<YoutubeSubtitleItem> = []) {
+export function reduceYoutubeSubtitleTimestamp(
+  subtitles: Array<YoutubeSubtitleItem> = [],
+  shouldShowTimestamp?: boolean,
+) {
   return reduceSubtitleTimestamp<YoutubeSubtitleItem>(
     subtitles,
     (i) => i.start,
     (i) => i.lines.join(' '),
-    true,
+    shouldShowTimestamp,
   )
 }
 
