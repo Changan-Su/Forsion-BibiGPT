@@ -78,10 +78,14 @@ export function ProcessingStatusWindow({ status, visible, onClose }: ProcessingS
       const maxX = window.innerWidth - rect.width
       const maxY = window.innerHeight - rect.height
 
-      setPosition((prev) => ({
-        x: Math.max(0, Math.min(prev.x, maxX)),
-        y: Math.max(0, Math.min(prev.y, maxY)),
-      }))
+      setPosition((prev) => {
+        const nextX = Math.max(0, Math.min(prev.x, maxX))
+        const nextY = Math.max(0, Math.min(prev.y, maxY))
+        if (nextX === prev.x && nextY === prev.y) {
+          return prev
+        }
+        return { x: nextX, y: nextY }
+      })
     }
   }, [position.x, position.y])
 

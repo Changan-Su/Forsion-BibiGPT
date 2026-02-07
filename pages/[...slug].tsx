@@ -56,6 +56,7 @@ export const Home: NextPage<{
       sentenceNumber: 5,
       outlineLevel: 1,
       outputLanguage: DEFAULT_LANGUAGE,
+      summaryModel: process.env.NEXT_PUBLIC_DEFAULT_MODEL || 'gpt-4o-mini',
     },
     resolver: zodResolver(videoConfigSchema),
   })

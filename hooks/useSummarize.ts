@@ -107,30 +107,40 @@ export function useSummarize(showSingIn: (show: boolean) => void, enableStream: 
         let done = false
         let metadataExtracted = false
         let hasReceivedContent = false
+        let buffer = ''
 
         while (!done) {
           const { value, done: doneReading } = await reader.read()
           done = doneReading
           if (!value) continue
 
-          let chunk = decoder.decode(value, { stream: true })
+          buffer += decoder.decode(value, { stream: true })
 
-          // 处理 SSE 格式的消息
-          const lines = chunk.split('\n')
+          // 处理 SSE 格式的消息（按行解析，避免分块 JSON 解析失败）
+          const lines = buffer.split('\n')
+          buffer = lines.pop() ?? ''
           let contentChunk = ''
 
           for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const jsonStr = line.substring(6) // 移除 'data: ' 前缀
+            if (!hasReceivedContent && line.startsWith('data:')) {
+              const jsonStr = line.replace(/^data:\s?/, '')
               try {
                 const data = JSON.parse(jsonStr)
 
                 // 处理进度事件
                 if (data.type === 'progress') {
-                  setProcessingStatus({
-                    stage: data.stage as ProcessingStatus['stage'],
-                    message: data.message,
-                    progress: data.progress,
+                  setProcessingStatus((prev) => {
+                    const hasProgress = typeof data.progress === 'number'
+                    const baseProgress = hasProgress ? data.progress : prev.progress
+                    const progress =
+                      data.stage === 'generating_summary' && !hasReceivedContent
+                        ? prev.progress ?? baseProgress
+                        : baseProgress
+                    return {
+                      stage: data.stage as ProcessingStatus['stage'],
+                      message: data.message,
+                      progress,
+                    }
                   })
                   continue
                 }
@@ -188,13 +198,16 @@ export function useSummarize(showSingIn: (show: boolean) => void, enableStream: 
                   continue
                 }
               } catch (e) {
-                // 不是 JSON，可能是普通文本内容
-                contentChunk += jsonStr
+                contentChunk += line + '\n'
               }
-            } else if (line.trim() && !line.startsWith('data:')) {
-              // 普通文本内容
-              contentChunk += line
+            } else {
+              contentChunk += line + '\n'
             }
+          }
+
+          if (hasReceivedContent && buffer) {
+            contentChunk += buffer
+            buffer = ''
           }
 
           // 添加内容到summary

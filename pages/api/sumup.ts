@@ -92,6 +92,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
       const isYoutube = videoConfig.service === 'youtube'
       const isDouyin = videoConfig.service === 'douyin'
+      const isBilibili = videoConfig.service === 'bilibili'
       let errorMessage = ''
 
       if (isDouyin) {
@@ -104,24 +105,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             ? '系统已尝试 yt-dlp，但未成功。建议配置 DOUYIN_API_BASE_URL 以启用 API 回退方案。'
             : '系统已尝试 yt-dlp，但未成功。建议启用 DOUYIN_API_ENABLED=true 并配置 DOUYIN_API_BASE_URL 以使用 API 回退方案。'
 
-        errorMessage =
-          source === 'audio'
-            ? `抱歉，该抖音视频没有字幕，且音频转文字失败。${apiHint}请检查服务器配置（需要安装 yt-dlp）或尝试其他视频。抖音视频通常需要音频转文字功能。`
-            : `抱歉，该抖音视频没有字幕或简介内容。${apiHint}请检查服务器配置（需要安装 yt-dlp 和 ffmpeg）或尝试其他视频。`
+        errorMessage = `抱歉，该抖音视频没有字幕。${apiHint}如需使用音频转文字功能，请确保服务器已安装 yt-dlp 和 ffmpeg。抖音视频通常需要音频转文字功能。`
       } else if (isYoutube) {
-        errorMessage =
-          source === 'audio'
-            ? '抱歉，该YouTube视频没有字幕，且音频转文字失败。请检查服务器配置（需要安装 yt-dlp）或尝试其他视频。'
-            : '抱歉，该YouTube视频没有字幕或简介内容。系统已尝试多种方法提取字幕（yt-dlp、savesubs.com）和音频转文字，但均未成功。请检查服务器配置或尝试其他视频。'
+        errorMessage = `抱歉，该 YouTube 视频没有字幕。系统已尝试多种方法提取字幕（yt-dlp、savesubs.com），但均未成功。如需使用音频转文字功能，请确保服务器已安装 yt-dlp。`
+      } else if (isBilibili) {
+        errorMessage = `抱歉，该 B 站视频没有字幕。如需使用音频转文字功能，请确保服务器已安装 yt-dlp。当前 yt-dlp 状态：${
+          source === 'audio' ? '已安装但转写失败' : '未安装或不可用'
+        }。`
       } else {
-        errorMessage =
-          source === 'audio'
-            ? '抱歉，该视频没有字幕，且音频转文字失败。请检查服务器配置（需要安装 yt-dlp）或尝试其他视频。'
-            : '抱歉，该视频没有字幕或简介内容。系统已尝试音频转文字，但未成功。请尝试其他视频或检查配置。'
+        errorMessage = `抱歉，该视频没有字幕。如需使用音频转文字功能，请确保服务器已安装 yt-dlp。`
       }
 
       return res.status(400).json({
-        error: '此视频暂无字幕或简介',
+        error: '此视频暂无字幕',
         errorMessage,
       })
     }
@@ -148,11 +144,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const openAiPayload = {
-      model: 'gpt-4o-mini',
+      model: videoConfig.summaryModel || 'gpt-4o-mini',
       messages: [{ role: ChatGPTAgent.user, content: userPrompt }],
       max_tokens: useStructuredSummary
-        ? Number(videoConfig.detailLevel) || (userKey ? 2000 : 1500) // 结构化总结需要更多token
-        : Number(videoConfig.detailLevel) || (userKey ? 800 : 600),
+        ? Number(videoConfig.detailLevel) || (userKey ? 4000 : 3000) // 结构化总结需要更多token，提升默认值以处理完整字幕
+        : Number(videoConfig.detailLevel) || (userKey ? 2000 : 1500), // 非结构化总结也提升默认值
       stream,
     }
 
