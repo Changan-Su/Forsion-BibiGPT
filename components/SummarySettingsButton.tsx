@@ -8,9 +8,20 @@ interface SummarySettingsButtonProps {
   getValues: UseFormReturn['getValues']
   setValue: UseFormReturn['setValue']
   videoService?: string
+  onResummarize?: (customPrompt?: string) => void
+  hasSubtitles?: boolean
+  isLoading?: boolean
 }
 
-export function SummarySettingsButton({ register, getValues, setValue, videoService }: SummarySettingsButtonProps) {
+export function SummarySettingsButton({
+  register,
+  getValues,
+  setValue,
+  videoService,
+  onResummarize,
+  hasSubtitles,
+  isLoading,
+}: SummarySettingsButtonProps) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -31,6 +42,9 @@ export function SummarySettingsButton({ register, getValues, setValue, videoServ
         getValues={getValues}
         setValue={setValue}
         videoService={videoService}
+        onResummarize={onResummarize}
+        hasSubtitles={hasSubtitles}
+        isLoading={isLoading}
       />
     </>
   )

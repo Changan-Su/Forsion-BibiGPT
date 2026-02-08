@@ -1,4 +1,5 @@
 import { useLocalStorage } from '~/hooks/useLocalStorage'
+import { CommonSubtitleItem } from '~/lib/types'
 
 export interface VideoHistory {
   id: string
@@ -8,6 +9,7 @@ export interface VideoHistory {
   summary: string
   timestamp: number
   videoService: string
+  subtitlesArray?: CommonSubtitleItem[] | null
 }
 
 export function useVideoHistory() {

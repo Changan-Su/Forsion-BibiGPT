@@ -43,6 +43,7 @@ interface RightInfoPanelProps {
   getValues?: UseFormReturn['getValues']
   setValue?: UseFormReturn['setValue']
   videoService?: string
+  onResummarize?: (customPrompt?: string) => void
 }
 
 export function RightInfoPanel({
@@ -59,6 +60,7 @@ export function RightInfoPanel({
   getValues,
   setValue,
   videoService,
+  onResummarize,
 }: RightInfoPanelProps) {
   const [activeTab, setActiveTab] = useState<'summary' | 'mindmap' | 'thoughts'>('summary')
   const [showFullSummary, setShowFullSummary] = useState(false)
@@ -230,6 +232,9 @@ export function RightInfoPanel({
               getValues={getValues}
               setValue={setValue}
               videoService={videoService}
+              onResummarize={onResummarize}
+              hasSubtitles={!!(subtitlesArray && subtitlesArray.length > 0)}
+              isLoading={isLoading}
             />
           )}
         </div>

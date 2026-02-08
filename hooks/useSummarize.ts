@@ -28,6 +28,159 @@ export function useSummarize(showSingIn: (show: boolean) => void, enableStream: 
     })
   }
 
+  // 使用缓存的字幕数据重新生成总结（不重新获取字幕）
+  const resummarize = async (
+    videoConfig: VideoConfig,
+    userConfig: UserConfig,
+    cachedSubtitles: CommonSubtitleItem[],
+    title?: string,
+    cachedDuration?: number,
+    customPrompt?: string,
+  ) => {
+    if (!cachedSubtitles || cachedSubtitles.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: '无法重新生成',
+        description: '当前视频没有缓存的字幕数据，请重新总结该视频。',
+      })
+      return
+    }
+
+    setSummary('')
+    setLoading(true)
+    setProcessingStatus({
+      stage: 'generating_summary',
+      message: '正在使用新设置重新生成总结...',
+      progress: 20,
+    })
+
+    try {
+      const response = await fetch('/api/resummarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subtitlesArray: cachedSubtitles,
+          videoConfig,
+          userConfig,
+          title: title || '',
+          duration: cachedDuration,
+          customPrompt: customPrompt || undefined,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorJson = await response.json()
+        toast({
+          variant: 'destructive',
+          title: '重新生成失败',
+          description: errorJson.errorMessage || '请重试',
+        })
+        setProcessingStatus({ stage: 'error', message: '重新生成失败', error: `HTTP ${response.status}` })
+        setLoading(false)
+        return
+      }
+
+      // 处理流式响应（与 summarize 相同的逻辑）
+      const data = response.body
+      if (!data) {
+        setLoading(false)
+        return
+      }
+
+      const reader = data.getReader()
+      const decoder = new TextDecoder()
+      let done = false
+      let metadataExtracted = false
+      let hasReceivedContent = false
+      let totalReceivedLength = 0
+
+      while (!done) {
+        const { value, done: doneReading } = await reader.read()
+        done = doneReading
+        if (!value) continue
+
+        let chunk = decoder.decode(value, { stream: true })
+
+        // 提取 SSE 数据事件
+        let foundSSE = true
+        while (foundSSE) {
+          foundSSE = false
+          const sseMatch = chunk.match(/data:\s*(.*?)\n\n/s)
+          if (sseMatch) {
+            try {
+              const eventData = JSON.parse(sseMatch[1])
+
+              if (eventData.type === 'progress') {
+                setProcessingStatus({
+                  stage: eventData.stage as ProcessingStatus['stage'],
+                  message: eventData.message,
+                  progress: eventData.progress,
+                })
+                chunk = chunk.replace(sseMatch[0], '')
+                foundSSE = true
+                continue
+              }
+
+              if (eventData.type === 'metadata' && !metadataExtracted) {
+                if (typeof eventData.duration === 'number') {
+                  setVideoDuration(eventData.duration)
+                }
+                if (typeof eventData.title === 'string' && eventData.title) {
+                  setVideoTitle(eventData.title)
+                }
+                // resummarize API 不再回传 subtitlesArray（前端已有缓存），
+                // 仅在确实收到时才更新，避免覆盖已有数据
+                if (Array.isArray(eventData.subtitlesArray) && eventData.subtitlesArray.length > 0) {
+                  setSubtitlesArray(eventData.subtitlesArray)
+                }
+                if (eventData.subtitleSource) {
+                  setSubtitleSource(eventData.subtitleSource || 'subtitle')
+                }
+                metadataExtracted = true
+                chunk = chunk.replace(sseMatch[0], '')
+                foundSSE = true
+                continue
+              }
+
+              chunk = chunk.replace(sseMatch[0], '')
+              foundSSE = true
+            } catch (e) {
+              foundSSE = false
+            }
+          }
+        }
+
+        if (chunk) {
+          if (!hasReceivedContent && chunk.trim()) {
+            hasReceivedContent = true
+          }
+          if (hasReceivedContent || chunk.trim()) {
+            totalReceivedLength += chunk.length
+            setSummary((prev) => prev + chunk)
+            const estimatedProgress = Math.min(95, 60 + Math.floor((totalReceivedLength / 2000) * 35))
+            setProcessingStatus({
+              stage: 'generating_summary',
+              message: '正在生成 AI 总结...',
+              progress: estimatedProgress,
+            })
+          }
+        }
+      }
+
+      setProcessingStatus({ stage: 'completed', message: '总结重新生成完成', progress: 100 })
+      setLoading(false)
+    } catch (e: any) {
+      console.error('[resummarize ERROR]', e)
+      setProcessingStatus({ stage: 'error', message: '处理失败', error: e.message || e.errorMessage })
+      toast({
+        variant: 'destructive',
+        title: '未知错误：',
+        description: e.message || e.errorMessage,
+      })
+      setLoading(false)
+    }
+  }
+
   const summarize = async (videoConfig: VideoConfig, userConfig: UserConfig) => {
     setSummary('')
     setLoading(true)
@@ -91,6 +244,11 @@ export function useSummarize(showSingIn: (show: boolean) => void, enableStream: 
             description: errorJson.errorMessage,
           })
         }
+        setProcessingStatus({
+          stage: 'error',
+          message: '请求失败',
+          error: `HTTP ${response.status}`,
+        })
         setLoading(false)
         return
       }
@@ -107,6 +265,7 @@ export function useSummarize(showSingIn: (show: boolean) => void, enableStream: 
         let done = false
         let metadataExtracted = false
         let hasReceivedContent = false
+        let totalReceivedLength = 0
 
         while (!done) {
           const { value, done: doneReading } = await reader.read()
@@ -115,111 +274,108 @@ export function useSummarize(showSingIn: (show: boolean) => void, enableStream: 
 
           let chunk = decoder.decode(value, { stream: true })
 
-          // 处理 SSE 格式的消息
-          const lines = chunk.split('\n')
-          let contentChunk = ''
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const jsonStr = line.substring(6) // 移除 'data: ' 前缀
+          // 提取 SSE 数据事件（progress/metadata）
+          // SSE 事件格式为: data: {JSON}\n\n，始终出现在 OpenAI 内容之前
+          let foundSSE = true
+          while (foundSSE) {
+            foundSSE = false
+            // 匹配 SSE 事件: data: {JSON}\n\n（非贪婪匹配到第一个 \n\n）
+            const sseMatch = chunk.match(/data:\s*(.*?)\n\n/s)
+            if (sseMatch) {
               try {
-                const data = JSON.parse(jsonStr)
+                const eventData = JSON.parse(sseMatch[1])
 
                 // 处理进度事件
-                if (data.type === 'progress') {
+                if (eventData.type === 'progress') {
                   setProcessingStatus({
-                    stage: data.stage as ProcessingStatus['stage'],
-                    message: data.message,
-                    progress: data.progress,
+                    stage: eventData.stage as ProcessingStatus['stage'],
+                    message: eventData.message,
+                    progress: eventData.progress,
                   })
+                  chunk = chunk.replace(sseMatch[0], '')
+                  foundSSE = true
                   continue
                 }
 
                 // 处理元数据
-                if (data.type === 'metadata' && !metadataExtracted) {
-                  if (typeof data.duration === 'number') {
-                    setVideoDuration(data.duration)
+                if (eventData.type === 'metadata' && !metadataExtracted) {
+                  if (typeof eventData.duration === 'number') {
+                    setVideoDuration(eventData.duration)
                   }
-                  if (typeof data.title === 'string' && data.title) {
-                    console.log('[useSummarize] 接收到视频标题:', data.title)
-                    setVideoTitle(data.title)
+                  if (typeof eventData.title === 'string' && eventData.title) {
+                    console.log('[useSummarize] 接收到视频标题:', eventData.title)
+                    setVideoTitle(eventData.title)
                   }
                   // 接收字幕数据（无论是否为空数组都处理）
-                  if (Array.isArray(data.subtitlesArray)) {
-                    if (data.subtitlesArray.length > 0) {
+                  if (Array.isArray(eventData.subtitlesArray)) {
+                    if (eventData.subtitlesArray.length > 0) {
                       console.log('[useSummarize] 接收到字幕数据:', {
-                        count: data.subtitlesArray.length,
-                        source: data.subtitleSource,
+                        count: eventData.subtitlesArray.length,
+                        source: eventData.subtitleSource,
                       })
-                      // 显示前几条字幕内容用于调试
                       console.log(
                         '[useSummarize] 字幕内容预览（前5条）:',
-                        data.subtitlesArray.slice(0, 5).map((item: any) => ({
+                        eventData.subtitlesArray.slice(0, 5).map((item: any) => ({
                           index: item.index,
                           time: item.s,
                           text: item.text?.substring(0, 50) + (item.text?.length > 50 ? '...' : ''),
                         })),
                       )
-                      // 显示所有字幕文本（用于调试）
-                      const allText = data.subtitlesArray.map((item: any) => item.text).join('\n')
+                      const allText = eventData.subtitlesArray.map((item: any) => item.text).join('\n')
                       console.log(
                         '[useSummarize] 完整字幕文本:',
                         allText.substring(0, 500) + (allText.length > 500 ? '...' : ''),
                       )
-                      setSubtitlesArray(data.subtitlesArray)
-                      setSubtitleSource(data.subtitleSource || 'subtitle')
+                      setSubtitlesArray(eventData.subtitlesArray)
+                      setSubtitleSource(eventData.subtitleSource || 'subtitle')
                     } else {
-                      // 接收到空数组，说明视频没有字幕
                       console.log('[useSummarize] 接收到空字幕数组（视频无字幕）:', {
-                        source: data.subtitleSource,
+                        source: eventData.subtitleSource,
                       })
                       setSubtitlesArray([])
-                      setSubtitleSource(data.subtitleSource || undefined)
+                      setSubtitleSource(eventData.subtitleSource || undefined)
                     }
                   } else {
                     console.log('[useSummarize] 未接收到字幕数据（不是数组）:', {
-                      hasSubtitlesArray: !!data.subtitlesArray,
-                      isArray: Array.isArray(data.subtitlesArray),
-                      type: typeof data.subtitlesArray,
-                      subtitleSource: data.subtitleSource,
+                      hasSubtitlesArray: !!eventData.subtitlesArray,
+                      isArray: Array.isArray(eventData.subtitlesArray),
+                      type: typeof eventData.subtitlesArray,
+                      subtitleSource: eventData.subtitleSource,
                     })
                   }
                   metadataExtracted = true
+                  chunk = chunk.replace(sseMatch[0], '')
+                  foundSSE = true
                   continue
                 }
+
+                // 未知事件类型，也移除
+                chunk = chunk.replace(sseMatch[0], '')
+                foundSSE = true
               } catch (e) {
-                // 不是 JSON，可能是普通文本内容
-                contentChunk += jsonStr
+                // JSON 解析失败，不是 SSE 事件，停止尝试
+                foundSSE = false
               }
-            } else if (line.trim() && !line.startsWith('data:')) {
-              // 普通文本内容
-              contentChunk += line
             }
           }
 
-          // 添加内容到summary
-          if (contentChunk) {
-            const wasFirstContent = !hasReceivedContent
-            hasReceivedContent = true
-            setSummary((prev) => {
-              const newSummary = prev + contentChunk
-              // 更新进度：当开始接收内容时，表示正在生成总结
-              if (wasFirstContent) {
-                setProcessingStatus({
-                  stage: 'generating_summary',
-                  message: '正在生成 AI 总结...',
-                  progress: 60,
-                })
-              } else {
-                // 根据已接收的内容长度估算进度（60-95%）
-                const estimatedProgress = Math.min(95, 60 + Math.floor((newSummary.length / 2000) * 35))
-                setProcessingStatus((prev) => ({
-                  ...prev,
-                  progress: estimatedProgress,
-                }))
-              }
-              return newSummary
-            })
+          // 剩余内容直接追加到 summary（保留原始换行符）
+          if (chunk) {
+            if (!hasReceivedContent && chunk.trim()) {
+              hasReceivedContent = true
+            }
+            if (hasReceivedContent || chunk.trim()) {
+              totalReceivedLength += chunk.length
+              setSummary((prev) => prev + chunk)
+
+              // 关键修复：进度更新放在 setSummary 外部，确保 React 正确处理状态更新
+              const estimatedProgress = Math.min(95, 60 + Math.floor((totalReceivedLength / 2000) * 35))
+              setProcessingStatus({
+                stage: 'generating_summary',
+                message: '正在生成 AI 总结...',
+                progress: estimatedProgress,
+              })
+            }
           }
         }
 
@@ -266,11 +422,13 @@ export function useSummarize(showSingIn: (show: boolean) => void, enableStream: 
     summary,
     resetSummary,
     summarize,
+    resummarize,
     setSummary,
     videoDuration,
     videoTitle,
     setVideoTitle,
     subtitlesArray,
+    setSubtitlesArray,
     subtitleSource,
     processingStatus,
   }

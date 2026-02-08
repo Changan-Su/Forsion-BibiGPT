@@ -167,11 +167,13 @@ export function ProcessingStatusWindow({ status, visible, onClose }: ProcessingS
           </div>
 
           {/* 进度条 */}
-          {status.progress !== undefined && status.stage !== 'completed' && status.stage !== 'error' && (
+          {status.progress !== undefined && status.stage !== 'error' && (
             <div className="mb-2">
               <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
                 <motion.div
-                  className="h-full bg-blue-500 dark:bg-blue-400"
+                  className={`h-full ${
+                    status.stage === 'completed' ? 'bg-green-500 dark:bg-green-400' : 'bg-blue-500 dark:bg-blue-400'
+                  }`}
                   initial={{ width: 0 }}
                   animate={{ width: `${status.progress}%` }}
                   transition={{ duration: 0.3 }}

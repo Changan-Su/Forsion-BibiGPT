@@ -1,9 +1,10 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Markdown from 'marked-react'
 import {
   parseStructuredSummary,
   StructuredSummary,
   HighlightItem,
+  ChapterItem,
   ReflectionItem,
   TermExplanation,
   TimelineItem,
@@ -66,6 +67,11 @@ export function StructuredSummaryDisplay({
   const [polishedSummary, setPolishedSummary] = useState<string>(summary)
   const [isPolishing, setIsPolishing] = useState(false)
   const [isRewriting, setIsRewriting] = useState(false)
+
+  // 当 summary prop 变化时（例如切换历史记录），同步更新 polishedSummary
+  useEffect(() => {
+    setPolishedSummary(summary)
+  }, [summary])
 
   // 使用润色后的总结或原始总结
   const currentSummary = polishedSummary || summary
@@ -235,34 +241,40 @@ export function StructuredSummaryDisplay({
 
               // 如果 highlight.timestamp 为空，尝试从内容中提取
               if (!timestampInContent) {
-                // 尝试匹配末尾的时间戳格式：00:45
-                const endTimestampMatch = highlight.content.match(/(\d{1,2}:\d{1,2}(?::\d{1,2})?)\s*$/)
+                // 先清理末尾的标签（如 #日本美食 #福冈旅行 等），以便正确匹配时间戳
+                const hashtagPattern = /(\s+#[^\s#]+)+\s*$/
+                const contentWithoutHashtags = highlight.content.replace(hashtagPattern, '').trim()
+
+                // 尝试匹配末尾的时间戳格式：00:45（在去掉标签后的内容上匹配）
+                const endTimestampMatch = contentWithoutHashtags.match(/(\d{1,2}:\d{1,2}(?::\d{1,2})?)\s*$/)
                 if (endTimestampMatch) {
                   timestampInContent = endTimestampMatch[1]
-                  mainContent = highlight.content
+                  mainContent = contentWithoutHashtags
                     .replace(new RegExp(endTimestampMatch[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'), '')
                     .trim()
                 } else {
                   // 尝试匹配括号格式：(00:45)
-                  const bracketTimestampMatch = highlight.content.match(/\((\d{1,2}:\d{1,2}(?::\d{1,2})?)\)/)
+                  const bracketTimestampMatch = contentWithoutHashtags.match(/\((\d{1,2}:\d{1,2}(?::\d{1,2})?)\)/)
                   if (bracketTimestampMatch) {
                     timestampInContent = bracketTimestampMatch[1]
-                    mainContent = highlight.content.replace(bracketTimestampMatch[0], '').trim()
+                    mainContent = contentWithoutHashtags.replace(bracketTimestampMatch[0], '').trim()
                   } else {
                     // 尝试匹配4位数字格式：0830 (MMSS)
-                    const fourDigitsMatch = highlight.content.match(/(\d{4})\s*$/)
+                    const fourDigitsMatch = contentWithoutHashtags.match(/(\d{4})\s*$/)
                     if (fourDigitsMatch) {
                       const digits = fourDigitsMatch[1]
                       timestampInContent = `${digits.substring(0, 2)}:${digits.substring(2)}`
-                      mainContent = highlight.content
+                      mainContent = contentWithoutHashtags
                         .replace(new RegExp(fourDigitsMatch[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'), '')
                         .trim()
                     }
                   }
                 }
               } else {
-                // 如果已有时间戳，从内容中移除它（可能是括号格式或4位数字格式）
+                // 如果已有时间戳，从内容中移除它（可能是括号格式或4位数字格式），同时清理标签
+                const hashtagPattern = /(\s+#[^\s#]+)+\s*$/
                 mainContent = highlight.content
+                  .replace(hashtagPattern, '')
                   .replace(
                     new RegExp('\\(' + timestampInContent.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\)', 'g'),
                     '',
@@ -345,7 +357,50 @@ export function StructuredSummaryDisplay({
         </div>
       )}
 
-      {/* 隐藏其他模块，只显示摘要和亮点（图一简洁模板） */}
+      {/* 章节大纲 */}
+      {structuredData.chapters && structuredData.chapters.length > 0 && (
+        <div className="rounded-xl border-2 border-teal-200 bg-gradient-to-br from-teal-50 to-white p-6 shadow-md dark:border-teal-800 dark:from-teal-900/20 dark:to-slate-900">
+          <h2 className="mb-4 flex items-center text-2xl font-bold text-teal-600 dark:text-teal-400">
+            <span className="mr-2">📑</span>
+            章节大纲
+          </h2>
+          <div className="space-y-4">
+            {structuredData.chapters.map((chapter: ChapterItem, index: number) => (
+              <div key={index} className="rounded-lg bg-white p-4 shadow-sm dark:bg-slate-800">
+                <div className="mb-2 flex items-center gap-3">
+                  <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-teal-500 text-sm font-bold text-white">
+                    {index + 1}
+                  </span>
+                  {chapter.timestamp && (
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        const seconds = timestampToSeconds(chapter.timestamp)
+                        if (videoPlayerController && typeof videoPlayerController.seekTo === 'function') {
+                          videoPlayerController.seekTo(seconds)
+                        }
+                      }}
+                      className="inline-flex cursor-pointer items-center rounded bg-blue-500 px-2 py-1 text-sm font-medium text-white transition-colors hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
+                      title={`跳转到 ${chapter.timestamp}`}
+                    >
+                      {chapter.timestamp}
+                    </button>
+                  )}
+                  <span className="text-lg font-semibold text-teal-700 dark:text-teal-300">{chapter.title}</span>
+                </div>
+                {chapter.description && (
+                  <p className="ml-10 whitespace-pre-line leading-7 text-slate-600 dark:text-slate-400">
+                    {chapter.description}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 隐藏其他模块，只显示摘要、亮点和章节大纲 */}
       {/* 思考 */}
       {/* {structuredData.reflections.length > 0 && (
         <div className="rounded-xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-white p-6 shadow-md dark:border-purple-800 dark:from-purple-900/20 dark:to-slate-900">

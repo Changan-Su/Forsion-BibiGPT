@@ -14,6 +14,9 @@ interface SummarySettingsDialogProps {
   getValues: UseFormReturn['getValues']
   setValue: UseFormReturn['setValue']
   videoService?: string
+  onResummarize?: (customPrompt?: string) => void
+  hasSubtitles?: boolean
+  isLoading?: boolean
 }
 
 export function SummarySettingsDialog({
@@ -23,6 +26,9 @@ export function SummarySettingsDialog({
   getValues,
   setValue,
   videoService,
+  onResummarize,
+  hasSubtitles,
+  isLoading,
 }: SummarySettingsDialogProps) {
   const [activeTab, setActiveTab] = useState<'default' | 'custom'>('default')
   const { recommendConfigByVideoType } = useSmartRecommendation()
@@ -89,18 +95,66 @@ export function SummarySettingsDialog({
       handleApplyTemplate(selectedTemplateId)
     }
     onOpenChange(false)
-    toast({
-      title: '设置已保存',
-      description: '总结设置已应用',
-    })
+
+    // 如果有缓存字幕数据且当前未在加载中，立即使用新设置重新生成总结
+    if (onResummarize && hasSubtitles && !isLoading) {
+      const promptToUse = customPrompt.trim() || undefined
+      toast({
+        title: '正在重新生成总结',
+        description: '使用新设置重新生成中...',
+      })
+      // 使用 setTimeout 确保对话框关闭和设置值更新后再触发
+      setTimeout(() => {
+        onResummarize(promptToUse)
+      }, 100)
+    } else if (isLoading) {
+      toast({
+        title: '设置已保存',
+        description: '当前正在生成总结，新设置将在下次总结时生效',
+      })
+    } else if (!hasSubtitles) {
+      toast({
+        title: '设置已保存',
+        description: '当前无字幕数据，下次总结时将使用新设置',
+      })
+    } else {
+      toast({
+        title: '设置已保存',
+        description: '总结设置已应用',
+      })
+    }
   }
 
   const promptCategories = [
-    { id: 'product', name: '产品营销' },
-    { id: 'script', name: '短视频脚本' },
-    { id: 'joke', name: '提取笑点' },
-    { id: 'quote', name: '提取金句' },
-    { id: 'custom', name: '自定义' },
+    {
+      id: 'product',
+      name: '产品营销',
+      prompt:
+        '请从产品营销的角度分析这个视频，提取以下内容：\n1. 产品/服务的核心卖点和价值主张\n2. 目标用户画像和使用场景\n3. 营销话术和关键宣传语\n4. 竞品对比和差异化优势\n5. 可复用的营销策略和推广思路\n\n请用结构化的方式输出，适合直接用于产品文案和营销方案。',
+    },
+    {
+      id: 'script',
+      name: '短视频脚本',
+      prompt:
+        '请将这个视频的内容改编为短视频脚本格式，包含：\n1. 开头hook（吸引注意力的前3秒话术）\n2. 内容主体（分为3-5个场景，每个场景标注时长和画面描述）\n3. 关键转场和节奏点\n4. 结尾CTA（引导互动的话术）\n5. 推荐的背景音乐风格和字幕样式\n\n请保持口语化表达，适合短视频平台的风格。',
+    },
+    {
+      id: 'joke',
+      name: '提取笑点',
+      prompt:
+        '请从视频中提取所有有趣、幽默的内容：\n1. 搞笑的台词和金句（标注时间戳）\n2. 有梗的片段描述\n3. 可以做表情包或段子的素材\n4. 评论区可能会火的弹幕梗\n5. 适合二次创作的搞笑片段\n\n请用轻松幽默的语气输出，突出每个笑点的上下文和笑点所在。',
+    },
+    {
+      id: 'quote',
+      name: '提取金句',
+      prompt:
+        '请从视频中提取最有价值的金句和名言：\n1. 具有启发性的观点和见解（标注时间戳）\n2. 可以直接引用的经典语录\n3. 适合做笔记摘抄的核心论点\n4. 引人深思的问题和反思\n5. 适合分享到社交媒体的短句\n\n每条金句请注明说话人（如果有的话）和时间戳，并简要说明上下文。',
+    },
+    {
+      id: 'custom',
+      name: '自定义',
+      prompt: '',
+    },
   ]
 
   return (
@@ -296,9 +350,15 @@ export function SummarySettingsDialog({
                   <button
                     key={category.id}
                     onClick={() => {
-                      // 这里可以根据分类加载不同的提示词模板
-                      if (category.id === 'custom') {
-                        setCustomPrompt('')
+                      setCustomPrompt(category.prompt)
+                      if (category.id !== 'custom') {
+                        setTemplateName(category.name)
+                        toast({
+                          title: '已加载提示词',
+                          description: `已加载「${category.name}」提示词模板`,
+                        })
+                      } else {
+                        setTemplateName('')
                       }
                     }}
                     className="rounded-md border border-gray-300 bg-white px-3 py-1 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
@@ -353,10 +413,18 @@ export function SummarySettingsDialog({
           </button>
           <button
             onClick={handleConfirm}
-            className="rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700"
+            disabled={isLoading}
+            className={`rounded-md px-4 py-2 text-sm font-medium text-white ${
+              isLoading
+                ? 'cursor-not-allowed bg-gray-400 dark:bg-gray-600'
+                : 'bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700'
+            }`}
           >
-            确认总结
+            {isLoading ? '生成中...' : onResummarize && hasSubtitles ? '确认并重新生成' : '确认总结'}
           </button>
+          {!hasSubtitles && onResummarize && !isLoading && (
+            <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">当前无字幕数据，设置将在下次总结时生效</p>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
