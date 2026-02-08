@@ -191,12 +191,20 @@ export function SummarySettingsDialog({
         {/* 默认配置标签页 */}
         {activeTab === 'default' && (
           <div className="space-y-4 py-4">
-            {/* 默认模型 */}
+            {/* 模型选择 */}
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-900 dark:text-white">默认模型</label>
-              <div className="rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                大语言模型
-              </div>
+              <label className="mb-2 block text-sm font-medium text-gray-900 dark:text-white">选择模型</label>
+              <select
+                id="summaryModel"
+                className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-sky-500 focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-sky-500 dark:focus:ring-sky-500"
+                {...register('summaryModel')}
+              >
+                {(process.env.NEXT_PUBLIC_AVAILABLE_MODELS || 'gpt-4o-mini').split(',').map((model) => (
+                  <option key={model.trim()} value={model.trim()}>
+                    {model.trim()}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* 智能推荐 */}
@@ -310,12 +318,20 @@ export function SummarySettingsDialog({
         {/* 自定义总结标签页 */}
         {activeTab === 'custom' && (
           <div className="space-y-4 py-4">
-            {/* 默认模型 */}
+            {/* 模型选择 */}
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-900 dark:text-white">默认模型</label>
-              <div className="rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                大语言模型
-              </div>
+              <label className="mb-2 block text-sm font-medium text-gray-900 dark:text-white">选择模型</label>
+              <select
+                id="summaryModel"
+                className="block w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-sky-500 focus:ring-sky-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-sky-500 dark:focus:ring-sky-500"
+                {...register('summaryModel')}
+              >
+                {(process.env.NEXT_PUBLIC_AVAILABLE_MODELS || 'gpt-4o-mini').split(',').map((model) => (
+                  <option key={model.trim()} value={model.trim()}>
+                    {model.trim()}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* 提示词内容 */}

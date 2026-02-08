@@ -45,9 +45,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: process.env.EMAIL_FROM || 'BibiGPT <noreply@bibigpt.com>',
+          from: process.env.EMAIL_FROM || '青鸟收藏夹 <noreply@bibigpt.com>',
           to: [to],
-          subject: subject || 'BibiGPT 视频总结',
+          subject: subject || '青鸟收藏夹 视频总结',
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <h2 style="color: #333;">视频总结</h2>
@@ -58,7 +58,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 <strong>原视频链接：</strong> <a href="${videoUrl}" style="color: #0066cc;">${videoUrl}</a>
               </p>
               <p style="color: #999; font-size: 12px; margin-top: 20px;">
-                由 BibiGPT 自动生成
+                由 青鸟收藏夹 自动生成
               </p>
             </div>
           `,
@@ -89,12 +89,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           personalizations: [
             {
               to: [{ email: to }],
-              subject: subject || 'BibiGPT 视频总结',
+              subject: subject || '青鸟收藏夹 视频总结',
             },
           ],
           from: {
             email: process.env.EMAIL_FROM || 'noreply@bibigpt.com',
-            name: 'BibiGPT',
+            name: '青鸟收藏夹',
           },
           content: [
             {
@@ -109,7 +109,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     <strong>原视频链接：</strong> <a href="${videoUrl}" style="color: #0066cc;">${videoUrl}</a>
                   </p>
                   <p style="color: #999; font-size: 12px; margin-top: 20px;">
-                    由 BibiGPT 自动生成
+                    由 青鸟收藏夹 自动生成
                   </p>
                 </div>
               `,

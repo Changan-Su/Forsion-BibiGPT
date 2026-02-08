@@ -265,32 +265,40 @@ export function useSummarize(showSingIn: (show: boolean) => void, enableStream: 
         let done = false
         let metadataExtracted = false
         let hasReceivedContent = false
-        let totalReceivedLength = 0
+        let buffer = ''
 
         while (!done) {
           const { value, done: doneReading } = await reader.read()
           done = doneReading
           if (!value) continue
 
-          let chunk = decoder.decode(value, { stream: true })
+          buffer += decoder.decode(value, { stream: true })
 
-          // 提取 SSE 数据事件（progress/metadata）
-          // SSE 事件格式为: data: {JSON}\n\n，始终出现在 OpenAI 内容之前
-          let foundSSE = true
-          while (foundSSE) {
-            foundSSE = false
-            // 匹配 SSE 事件: data: {JSON}\n\n（非贪婪匹配到第一个 \n\n）
-            const sseMatch = chunk.match(/data:\s*(.*?)\n\n/s)
-            if (sseMatch) {
+          // 处理 SSE 格式的消息（按行解析，避免分块 JSON 解析失败）
+          const lines = buffer.split('\n')
+          buffer = lines.pop() ?? ''
+          let contentChunk = ''
+
+          for (const line of lines) {
+            if (!hasReceivedContent && line.startsWith('data:')) {
+              const jsonStr = line.replace(/^data:\s?/, '')
               try {
                 const eventData = JSON.parse(sseMatch[1])
 
                 // 处理进度事件
-                if (eventData.type === 'progress') {
-                  setProcessingStatus({
-                    stage: eventData.stage as ProcessingStatus['stage'],
-                    message: eventData.message,
-                    progress: eventData.progress,
+                if (data.type === 'progress') {
+                  setProcessingStatus((prev) => {
+                    const hasProgress = typeof data.progress === 'number'
+                    const baseProgress = hasProgress ? data.progress : prev.progress
+                    const progress =
+                      data.stage === 'generating_summary' && !hasReceivedContent
+                        ? prev.progress ?? baseProgress
+                        : baseProgress
+                    return {
+                      stage: data.stage as ProcessingStatus['stage'],
+                      message: data.message,
+                      progress,
+                    }
                   })
                   chunk = chunk.replace(sseMatch[0], '')
                   foundSSE = true
@@ -353,29 +361,41 @@ export function useSummarize(showSingIn: (show: boolean) => void, enableStream: 
                 chunk = chunk.replace(sseMatch[0], '')
                 foundSSE = true
               } catch (e) {
-                // JSON 解析失败，不是 SSE 事件，停止尝试
-                foundSSE = false
+                contentChunk += line + '\n'
               }
+            } else {
+              contentChunk += line + '\n'
             }
           }
 
-          // 剩余内容直接追加到 summary（保留原始换行符）
-          if (chunk) {
-            if (!hasReceivedContent && chunk.trim()) {
-              hasReceivedContent = true
-            }
-            if (hasReceivedContent || chunk.trim()) {
-              totalReceivedLength += chunk.length
-              setSummary((prev) => prev + chunk)
+          if (hasReceivedContent && buffer) {
+            contentChunk += buffer
+            buffer = ''
+          }
 
-              // 关键修复：进度更新放在 setSummary 外部，确保 React 正确处理状态更新
-              const estimatedProgress = Math.min(95, 60 + Math.floor((totalReceivedLength / 2000) * 35))
-              setProcessingStatus({
-                stage: 'generating_summary',
-                message: '正在生成 AI 总结...',
-                progress: estimatedProgress,
-              })
-            }
+          // 添加内容到summary
+          if (contentChunk) {
+            const wasFirstContent = !hasReceivedContent
+            hasReceivedContent = true
+            setSummary((prev) => {
+              const newSummary = prev + contentChunk
+              // 更新进度：当开始接收内容时，表示正在生成总结
+              if (wasFirstContent) {
+                setProcessingStatus({
+                  stage: 'generating_summary',
+                  message: '正在生成 AI 总结...',
+                  progress: 60,
+                })
+              } else {
+                // 根据已接收的内容长度估算进度（60-95%）
+                const estimatedProgress = Math.min(95, 60 + Math.floor((newSummary.length / 2000) * 35))
+                setProcessingStatus((prev) => ({
+                  ...prev,
+                  progress: estimatedProgress,
+                }))
+              }
+              return newSummary
+            })
           }
         }
 

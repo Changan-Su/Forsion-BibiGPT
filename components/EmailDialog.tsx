@@ -71,7 +71,7 @@ export function EmailDialog({
             <Label htmlFor="subject">邮件主题（可选）</Label>
             <input
               id="subject"
-              placeholder="BibiGPT 视频总结"
+              placeholder="青鸟收藏夹 视频总结"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               className="flex h-10 w-full rounded-md border border-slate-200 bg-transparent px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:ring-offset-slate-900 dark:placeholder:text-slate-400 dark:focus-visible:ring-slate-400"

@@ -27,7 +27,7 @@ const SignInModal = ({
           <a href={BASE_DOMAIN}>
             <Image src="/tv-logo.png" alt="Logo" className="h-10 w-10 rounded-full" width={20} height={20} />
           </a>
-          <h3 className="font-display text-2xl font-bold">登录 BibiGPT</h3>
+          <h3 className="font-display text-2xl font-bold">登录 青鸟收藏夹</h3>
           <h4>
             （每天都赠送 {LOGIN_LIMIT_COUNT} 次哦，
             <a

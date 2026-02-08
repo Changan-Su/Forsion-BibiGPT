@@ -72,108 +72,16 @@ export async function fetchSubtitle(
   // 如果音频转文字未启用或不可用，但有描述文本，将其转换为字幕格式
   if (!enableAudioTranscription) {
     isDev && console.log('音频转文字未启用，跳过音频提取')
-    // 如果有描述文本，转换为字幕格式
-    if (result.descriptionText && result.descriptionText.trim()) {
-      isDev && console.log('将描述文本转换为字幕格式')
-      const descriptionAsSubtitle: Array<CommonSubtitleItem> = [
-        {
-          text: result.descriptionText.trim(),
-          index: 0,
-          s: shouldShowTimestamp ? 0 : undefined,
-        },
-      ]
-      return {
-        ...result,
-        subtitlesArray: descriptionAsSubtitle,
-        source: 'subtitle',
-      }
-    }
-    // 如果没有描述文本，至少显示视频标题或ID
-    if (result.title && result.title.trim()) {
-      isDev && console.log('将视频标题转换为字幕格式')
-      const titleAsSubtitle: Array<CommonSubtitleItem> = [
-        {
-          text: result.title.trim(),
-          index: 0,
-          s: shouldShowTimestamp ? 0 : undefined,
-        },
-      ]
-      return {
-        ...result,
-        subtitlesArray: titleAsSubtitle,
-        source: 'subtitle',
-      }
-    }
-    // 如果连标题都没有，至少显示视频ID
-    if (videoId) {
-      isDev && console.log('将视频ID转换为字幕格式')
-      const videoIdAsSubtitle: Array<CommonSubtitleItem> = [
-        {
-          text: `视频ID: ${videoId}`,
-          index: 0,
-          s: shouldShowTimestamp ? 0 : undefined,
-        },
-      ]
-      return {
-        ...result,
-        subtitlesArray: videoIdAsSubtitle,
-        source: 'subtitle',
-      }
-    }
+    // 当没有真实字幕时，不应该降级为描述文本，应该返回失败
+    isDev && console.log('无法获取真实字幕内容，返回失败')
     return result
   }
 
   // 检查 service 是否存在
   if (!service) {
     isDev && console.warn('视频服务类型未指定，无法进行音频转文字')
-    // 如果有描述文本，转换为字幕格式
-    if (result.descriptionText && result.descriptionText.trim()) {
-      isDev && console.log('将描述文本转换为字幕格式')
-      const descriptionAsSubtitle: Array<CommonSubtitleItem> = [
-        {
-          text: result.descriptionText.trim(),
-          index: 0,
-          s: shouldShowTimestamp ? 0 : undefined,
-        },
-      ]
-      return {
-        ...result,
-        subtitlesArray: descriptionAsSubtitle,
-        source: 'subtitle',
-      }
-    }
-    // 如果没有描述文本，至少显示视频标题或ID
-    if (result.title && result.title.trim()) {
-      isDev && console.log('将视频标题转换为字幕格式')
-      const titleAsSubtitle: Array<CommonSubtitleItem> = [
-        {
-          text: result.title.trim(),
-          index: 0,
-          s: shouldShowTimestamp ? 0 : undefined,
-        },
-      ]
-      return {
-        ...result,
-        subtitlesArray: titleAsSubtitle,
-        source: 'subtitle',
-      }
-    }
-    // 如果连标题都没有，至少显示视频ID
-    if (videoId) {
-      isDev && console.log('将视频ID转换为字幕格式')
-      const videoIdAsSubtitle: Array<CommonSubtitleItem> = [
-        {
-          text: `视频ID: ${videoId}`,
-          index: 0,
-          s: shouldShowTimestamp ? 0 : undefined,
-        },
-      ]
-      return {
-        ...result,
-        subtitlesArray: videoIdAsSubtitle,
-        source: 'subtitle',
-      }
-    }
+    // 当没有真实字幕时，不应该降级为描述文本，应该返回失败
+    isDev && console.log('无法获取真实字幕内容，返回失败')
     return result
   }
 
@@ -182,54 +90,9 @@ export async function fetchSubtitle(
     const isSupported = await checkAudioExtractionSupport()
     if (!isSupported) {
       isDev && console.warn('yt-dlp 未安装，无法进行音频转文字')
-      // 如果有描述文本，转换为字幕格式
-      if (result.descriptionText && result.descriptionText.trim()) {
-        isDev && console.log('将描述文本转换为字幕格式')
-        const descriptionAsSubtitle: Array<CommonSubtitleItem> = [
-          {
-            text: result.descriptionText.trim(),
-            index: 0,
-            s: shouldShowTimestamp ? 0 : undefined,
-          },
-        ]
-        return {
-          ...result,
-          subtitlesArray: descriptionAsSubtitle,
-          source: 'subtitle',
-        }
-      }
-      // 如果没有描述文本，至少显示视频标题或ID
-      if (result.title && result.title.trim()) {
-        isDev && console.log('将视频标题转换为字幕格式')
-        const titleAsSubtitle: Array<CommonSubtitleItem> = [
-          {
-            text: result.title.trim(),
-            index: 0,
-            s: shouldShowTimestamp ? 0 : undefined,
-          },
-        ]
-        return {
-          ...result,
-          subtitlesArray: titleAsSubtitle,
-          source: 'subtitle',
-        }
-      }
-      // 如果连标题都没有，至少显示视频ID
-      if (videoId) {
-        isDev && console.log('将视频ID转换为字幕格式')
-        const videoIdAsSubtitle: Array<CommonSubtitleItem> = [
-          {
-            text: `视频ID: ${videoId}`,
-            index: 0,
-            s: shouldShowTimestamp ? 0 : undefined,
-          },
-        ]
-        return {
-          ...result,
-          subtitlesArray: videoIdAsSubtitle,
-          source: 'subtitle',
-        }
-      }
+      // 当没有真实字幕且 yt-dlp 不可用时，不应该降级为描述文本
+      // 应该返回失败，让前端提示用户安装 yt-dlp 或选择有字幕的视频
+      isDev && console.log('无法获取真实字幕内容，返回失败')
       return result
     }
 
@@ -257,59 +120,15 @@ export async function fetchSubtitle(
     }
   } catch (error: any) {
     console.error('音频转文字失败:', error)
-    // 如果音频转文字失败，尝试将描述文本转换为字幕格式
-    // 确保所有视频都有原文细读内容
-    if (result.descriptionText && result.descriptionText.trim()) {
-      isDev && console.log('音频转文字失败，将描述文本转换为字幕格式')
-      // 将描述文本转换为字幕格式（单条字幕，无时间戳）
-      const descriptionAsSubtitle: Array<CommonSubtitleItem> = [
-        {
-          text: result.descriptionText.trim(),
-          index: 0,
-          s: shouldShowTimestamp ? 0 : undefined,
-        },
-      ]
-      return {
-        ...result,
-        subtitlesArray: descriptionAsSubtitle,
-        source: 'subtitle', // 标记为字幕来源（虽然实际上是描述文本）
-      }
-    }
-    // 如果音频转文字失败且没有描述文本，至少显示视频标题作为原文细读内容
-    // 确保所有视频都有原文细读内容
-    if (result.title && result.title.trim()) {
-      isDev && console.log('音频转文字失败且无描述文本，将视频标题转换为字幕格式')
-      const titleAsSubtitle: Array<CommonSubtitleItem> = [
-        {
-          text: result.title.trim(),
-          index: 0,
-          s: shouldShowTimestamp ? 0 : undefined,
-        },
-      ]
-      return {
-        ...result,
-        subtitlesArray: titleAsSubtitle,
-        source: 'subtitle',
-      }
-    }
-    // 如果所有方法都失败，至少显示视频ID作为原文细读内容
-    // 确保所有视频都有原文细读内容
-    if (videoId) {
-      isDev && console.log('所有方法都失败，将视频ID转换为字幕格式')
-      const videoIdAsSubtitle: Array<CommonSubtitleItem> = [
-        {
-          text: `视频ID: ${videoId}`,
-          index: 0,
-          s: shouldShowTimestamp ? 0 : undefined,
-        },
-      ]
-      return {
-        ...result,
-        subtitlesArray: videoIdAsSubtitle,
-        source: 'subtitle',
-      }
-    }
-    // 如果连视频ID都没有，返回原始结果（这种情况理论上不应该发生）
+    isDev &&
+      console.error('音频转文字错误详情:', {
+        service,
+        videoId,
+        error: error.message,
+        stack: error.stack,
+      })
+    // 音频转文字失败时，不应该降级为描述文本，应该直接返回失败
+    // 让 API 层统一处理错误提示
     return result
   }
 }
