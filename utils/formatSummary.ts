@@ -54,10 +54,17 @@ export interface TimelineItem {
   screenshot?: string // 截图URL或标注
 }
 
+export interface ChapterItem {
+  timestamp: string
+  title: string
+  description: string
+}
+
 export interface StructuredSummary {
   topic: string // 视频主题
   summary: string // 摘要
   highlights: HighlightItem[] // 亮点（带emoji+时间戳）
+  chapters: ChapterItem[] // 章节大纲（带时间戳+标题+详细描述）
   reflections: ReflectionItem[] // 思考（带问题+解答+时间戳）
   terms: TermExplanation[] // 术语解释
   timeline: TimelineItem[] // 时间线总结（分时间点+内容+截图标注）
@@ -220,6 +227,7 @@ export function parseStructuredSummary(summary: string, maxDurationSeconds?: num
     topic: '',
     summary: '',
     highlights: [],
+    chapters: [],
     reflections: [],
     terms: [],
     timeline: [],
@@ -238,7 +246,7 @@ export function parseStructuredSummary(summary: string, maxDurationSeconds?: num
     // 1. 在 markdown 标题前添加换行符（除了第一个）
     cleanSummary = cleanSummary.replace(/([^\n])(##\s+)/g, '$1\n$2')
     // 2. 在已知章节标题关键词后添加换行符（例如 "## 亮点✨ content" → "## 亮点\n✨ content"）
-    cleanSummary = cleanSummary.replace(/(##\s+(?:视频主题|摘要|亮点|思考|术语解释|时间线))\s*(?!\n)/g, '$1\n')
+    cleanSummary = cleanSummary.replace(/(##\s+(?:视频主题|摘要|亮点|章节大纲|思考|术语解释|时间线))\s*(?!\n)/g, '$1\n')
     // 3. 在 emoji 前添加换行符（如果前面不是换行符或标题）
     cleanSummary = cleanSummary.replace(/([^\n])([\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}])/gu, '$1\n$2')
     // 4. 在时间戳后添加换行符（如果后面是 emoji 或新内容）
@@ -290,10 +298,15 @@ export function parseStructuredSummary(summary: string, maxDurationSeconds?: num
       const timestampPatternBracket = /\((\d{1,2}:\d{1,2}(?::\d{1,2})?)\)/g // 括号格式：(00:45) 或 (8:0)
       const timestampPattern4Digits = /(\d{4})\s*$/ // 4位数字格式：0830 (MMSS)
 
-      const emojiMatch = trimmed.match(emojiPattern)
-      const timestampMatchEnd = trimmed.match(timestampPatternEnd)
-      const timestampMatchBracket = [...trimmed.matchAll(timestampPatternBracket)]
-      const timestampMatch4Digits = trimmed.match(timestampPattern4Digits)
+      // 先清理末尾的标签（如 #日本美食 #福冈旅行 等），以便正确匹配时间戳
+      const hashtagPattern = /(\s+#[^\s#]+)+\s*$/
+      const hashtagMatch = trimmed.match(hashtagPattern)
+      const trimmedWithoutHashtags = hashtagMatch ? trimmed.replace(hashtagPattern, '').trim() : trimmed
+
+      const emojiMatch = trimmedWithoutHashtags.match(emojiPattern)
+      const timestampMatchEnd = trimmedWithoutHashtags.match(timestampPatternEnd)
+      const timestampMatchBracket = [...trimmedWithoutHashtags.matchAll(timestampPatternBracket)]
+      const timestampMatch4Digits = trimmedWithoutHashtags.match(timestampPattern4Digits)
 
       const emoji = emojiMatch ? emojiMatch[1] : undefined
       // 优先使用末尾的时间戳，如果没有则使用括号中的最后一个，最后尝试4位数字格式
@@ -308,8 +321,8 @@ export function parseStructuredSummary(summary: string, maxDurationSeconds?: num
         timestamp = `${digits.substring(0, 2)}:${digits.substring(2)}`
       }
 
-      // 移除emoji和时间戳，获取内容
-      let content = trimmed
+      // 移除emoji、时间戳和标签，获取内容
+      let content = trimmedWithoutHashtags
       if (emoji) {
         content = content.replace(emoji, '').trim()
       }
@@ -349,6 +362,45 @@ export function parseStructuredSummary(summary: string, maxDurationSeconds?: num
           emoji,
           content: content,
         })
+      }
+    })
+  }
+
+  // 提取章节大纲（格式：### Timestamp ChapterTitle\n详细描述段落）
+  // 注意：使用 ##(?!#) 确保只在遇到二级标题 ## 时停止，而不是三级标题 ###
+  const chaptersMatch = cleanSummary.match(/##\s*章节大纲\s*\n+([\s\S]*?)(?=\n+##(?!#)|$)/i)
+  if (chaptersMatch) {
+    const chaptersText = chaptersMatch[1]
+    // Split by ### headings
+    const chapterBlocks = chaptersText.split(/(?=###\s+)/).filter((block) => block.trim())
+
+    chapterBlocks.forEach((block) => {
+      const trimmedBlock = block.trim()
+      // Match heading: ### Timestamp Title
+      // Support formats: ### 0:00 Title, ### 00:00 Title, ### 1:23:45 Title
+      const headingMatch = trimmedBlock.match(/^###\s+(\d{1,2}:\d{1,2}(?::\d{1,2})?)\s+(.+?)(?:\n|$)/)
+      if (headingMatch) {
+        let timestamp = normalizeTimestamp(headingMatch[1])
+        const title = headingMatch[2].trim()
+
+        // Validate and fix timestamp if duration is provided
+        if (maxDurationSeconds) {
+          const fixed = validateAndFixTimestamp(timestamp, maxDurationSeconds, true)
+          timestamp = fixed || timestamp
+        }
+
+        // Get description: everything after the heading line
+        const descriptionLines = trimmedBlock
+          .replace(/^###\s+.+(?:\n|$)/, '') // Remove heading line
+          .trim()
+
+        if (title) {
+          result.chapters.push({
+            timestamp,
+            title,
+            description: descriptionLines,
+          })
+        }
       }
     })
   }
@@ -536,6 +588,24 @@ export function structuredSummaryToMindMapMarkdown(structuredData: StructuredSum
       const emoji = highlight.emoji || '✨'
       const timestamp = highlight.timestamp ? ` (${highlight.timestamp})` : ''
       lines.push(`- ${emoji} ${highlight.content}${timestamp}`)
+    })
+  }
+
+  // 章节大纲分支
+  if (structuredData.chapters.length > 0) {
+    lines.push('')
+    lines.push('## 章节大纲')
+    structuredData.chapters.forEach((chapter) => {
+      lines.push(`- ${chapter.timestamp} - ${chapter.title}`)
+      if (chapter.description) {
+        const descSentences = chapter.description
+          .split(/[。！？\n]/)
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0)
+        descSentences.forEach((sentence) => {
+          lines.push(`  - ${sentence}`)
+        })
+      }
     })
   }
 

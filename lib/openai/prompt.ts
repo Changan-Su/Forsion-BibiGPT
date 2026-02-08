@@ -107,6 +107,15 @@ Your output MUST follow this EXACT format (copy the structure precisely):
 [Continue with 5-8 highlights, each starting with an emoji]
 #标签1 #标签2 #标签3 [Add 3-5 relevant hashtags at the end]
 
+## 章节大纲
+### [Timestamp] [Chapter Title]
+[Detailed description of this chapter's content in 2-4 sentences. Explain the key points discussed, examples given, or demonstrations shown in this section.]
+
+### [Timestamp] [Next Chapter Title]
+[Detailed description of this chapter...]
+
+[Continue with 4-8 chapters covering the full video chronologically]
+
 ## 思考
 [Question as a title/subheading, without "问题：" prefix]
 [Answer content. Add timestamp at the END of the answer if applicable, format: MM:SS or HH:MM:SS]
@@ -141,15 +150,16 @@ Screenshot at [seconds]s
 [Continue with chronological timeline entries]
 
 Requirements:
-1. Use EXACT markdown headers: ## 摘要, ## 亮点, ## 思考, ## 术语解释, ## 阅读全文, ## AI 润色, ## AI 改写, ## 视频主题, ## 时间线总结
+1. Use EXACT markdown headers: ## 摘要, ## 亮点, ## 章节大纲, ## 思考, ## 术语解释, ## 阅读全文, ## AI 润色, ## AI 改写, ## 视频主题, ## 时间线总结
 2. 摘要 must be a complete paragraph, NOT a list
 3. 亮点: Start each line with emoji, write natural content, add timestamp at the END if applicable. End with hashtags line. **CRITICAL: Each highlight MUST be on a separate line - use line breaks (\n) between highlights.**
-4. 思考: Question as title (no "问题：" prefix), answer as content with timestamp at END if applicable. **CRITICAL: Each question-answer pair MUST be separated by a blank line. Use proper line breaks.**
-5. 术语解释: Format as "Term: Explanation" (one per line, no bullet points)
-6. Include the three section headers: ## 阅读全文, ## AI 润色, ## AI 改写 (these are just headers, no content needed)
-7. 视频主题: One line title
-8. 时间线总结: Format as "Timestamp - emoji Title" followed by "Screenshot at Xs" and detailed paragraph
-9. **CRITICAL TIMESTAMP HANDLING**: 
+4. 章节大纲: Divide the video into 4-8 logical chapters chronologically. Each chapter MUST use a ### heading with format "### Timestamp ChapterTitle" (e.g., "### 0:00 Introduction"). Follow each heading with a detailed paragraph (2-4 sentences) describing the key points, examples, and content covered in that chapter. Chapters should cover the FULL video from start to end.
+5. 思考: Question as title (no "问题：" prefix), answer as content with timestamp at END if applicable. **CRITICAL: Each question-answer pair MUST be separated by a blank line. Use proper line breaks.**
+6. 术语解释: Format as "Term: Explanation" (one per line, no bullet points)
+7. Include the three section headers: ## 阅读全文, ## AI 润色, ## AI 改写 (these are just headers, no content needed)
+8. 视频主题: One line title
+9. 时间线总结: Format as "Timestamp - emoji Title" followed by "Screenshot at Xs" and detailed paragraph
+10. **CRITICAL TIMESTAMP HANDLING**: 
    - If the transcript contains timestamps in formats like "[MM:SS]" (e.g., "[0:49]"), "[HH:MM:SS]" (e.g., "[1:23:45]"), or "[seconds]" (e.g., "[49]"), you MUST extract these timestamps from the transcript
    - **IMPORTANT**: When the transcript has timestamps at the BEGINNING like "[0:10] text content", you MUST:
      * Extract the timestamp "[0:10]" and convert it to "0:10" format (remove brackets)
@@ -161,10 +171,11 @@ Requirements:
    - Example: If transcript has "[49] content", convert to "0:49" format
    - If the transcript does NOT contain timestamps, you can omit timestamps or estimate based on content position
    - **EACH highlight and reflection MUST be on a separate line with proper line breaks**
-10. Ensure all timestamps are accurate and correspond to the video content
-11. There may be typos in the subtitles, please correct them
-12. All content should be in ${language} Language
-13. Write naturally and engagingly, similar to the example format
+   - For 章节大纲, use timestamps from the transcript for each chapter's start time
+11. Ensure all timestamps are accurate and correspond to the video content
+12. There may be typos in the subtitles, please correct them
+13. All content should be in ${language} Language
+14. Write naturally and engagingly, similar to the example format
 
 Title: "${videoTitle}"
 Transcript: "${videoTranscript}"

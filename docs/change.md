@@ -8,6 +8,15 @@
 
 ### [未分类]
 
+#### 2026-02-08
+
+- 添加了「章节大纲」功能，支持将视频按逻辑章节拆分并生成详细描述
+  - 修改了结构化总结 Prompt（`lib/openai/prompt.ts`），在 `getStructuredSummaryPrompt` 中新增 `## 章节大纲` 段落，要求 AI 将视频分为 4-8 个逻辑章节，每章包含时间戳、标题和 2-4 句详细描述
+  - 新增 `ChapterItem` 接口和解析逻辑（`utils/formatSummary.ts`），支持从 AI 输出中提取 `### Timestamp Title` 格式的章节数据
+  - 在 `StructuredSummaryDisplay.tsx` 中新增章节大纲卡片组件，使用青色主题展示编号徽章、可点击时间戳按钮、章节标题和描述段落
+  - 在 `useSummaryTemplates.ts` 中新增「章节大纲」模板（detailLevel: 900, showTimestamp: true），并更新「详细总结」模板加入章节大纲说明
+  - 实现了提示词广场分类按钮功能（`SummarySettingsDialog.tsx`），点击「产品营销」「短视频脚本」「提取笑点」「提取金句」按钮后自动加载对应的预设提示词到自定义输入框
+
 #### 2026-02-07
 
 - 添加了视频 AI 问答板块，支持基于视频字幕内容进行智能问答

@@ -76,11 +76,13 @@ export const Home: NextPage<{
     summary,
     resetSummary,
     summarize,
+    resummarize,
     setSummary,
     videoDuration,
     videoTitle: apiVideoTitle,
     setVideoTitle: setApiVideoTitle,
     subtitlesArray,
+    setSubtitlesArray,
     subtitleSource,
     processingStatus,
   } = useSummarize(showSingIn, getValues('enableStream'))
@@ -276,9 +278,10 @@ export const Home: NextPage<{
           : currentVideoUrl.includes('douyin')
           ? 'douyin'
           : 'youtube',
+        subtitlesArray: subtitlesArray,
       })
     }
-  }, [summary, loading, currentVideoId, currentVideoUrl, videoTitle, apiVideoTitle])
+  }, [summary, loading, currentVideoId, currentVideoUrl, videoTitle, apiVideoTitle, subtitlesArray])
 
   const handleSelectHistory = (history: VideoHistory) => {
     // 设置标记，阻止自动生成总结和添加到历史记录
@@ -291,6 +294,13 @@ export const Home: NextPage<{
     setCurrentVideoUrl(history.videoUrl)
     setVideoTitle(history.title || '')
     setApiVideoTitle(history.title || '')
+
+    // 恢复字幕数据，使问答功能可用
+    if (history.subtitlesArray && history.subtitlesArray.length > 0) {
+      setSubtitlesArray(history.subtitlesArray)
+    } else {
+      setSubtitlesArray(null)
+    }
 
     // 重置标记，允许后续的自动生成
     setTimeout(() => {
@@ -308,6 +318,40 @@ export const Home: NextPage<{
     setVideoTitle('')
     setVideoAuthor('')
     resetSummary()
+  }
+
+  // 使用缓存字幕和新设置重新生成总结
+  const handleResummarize = (customPrompt?: string) => {
+    if (!subtitlesArray || subtitlesArray.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: '无法重新生成',
+        description: '当前视频没有缓存的字幕数据，请重新总结该视频。',
+      })
+      return
+    }
+
+    const formValues = getValues()
+    const videoConfig = {
+      videoId: currentVideoId,
+      service: currentVideoUrl.includes('bilibili')
+        ? VideoService.Bilibili
+        : currentVideoUrl.includes('douyin')
+        ? VideoService.Douyin
+        : VideoService.Youtube,
+      ...formValues,
+    }
+
+    setShowStatusWindow(true)
+
+    resummarize(
+      videoConfig,
+      { userKey, shouldShowTimestamp: formValues.showTimestamp },
+      subtitlesArray,
+      apiVideoTitle || videoTitle,
+      videoDuration,
+      customPrompt,
+    )
   }
 
   const handleApiKeyChange = (e: any) => {
@@ -446,6 +490,7 @@ export const Home: NextPage<{
                   ? 'youtube'
                   : undefined
               }
+              onResummarize={handleResummarize}
             />
           </div>
         </div>

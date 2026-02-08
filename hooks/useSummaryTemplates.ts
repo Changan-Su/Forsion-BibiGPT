@@ -31,9 +31,9 @@ const defaultTemplates: SummaryTemplate[] = [
   {
     id: 'detailed',
     name: '详细总结',
-    description: '生成详细的视频总结，包含更多细节',
+    description: '生成详细的视频总结，包含更多细节和章节大纲',
     promptTemplate:
-      '请生成一份详细的视频总结，包含以下内容：\n1. 完整的摘要（3-5句话）\n2. 详细的亮点（8-10个）\n3. 深入的思考（5-7个问题）\n4. 术语解释（5-7个）',
+      '请生成一份详细的视频总结，包含以下内容：\n1. 完整的摘要（3-5句话）\n2. 详细的亮点（8-10个）\n3. 章节大纲（将视频分为6-8个章节，每个章节包含时间戳、标题和3-4句详细描述）\n4. 深入的思考（5-7个问题）\n5. 术语解释（5-7个）',
     config: {
       detailLevel: 800,
       sentenceNumber: 8,
@@ -57,6 +57,23 @@ const defaultTemplates: SummaryTemplate[] = [
       outlineLevel: 1,
       outputLanguage: '中文',
       showTimestamp: false,
+      showEmoji: true,
+    },
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  },
+  {
+    id: 'chapter-outline',
+    name: '章节大纲',
+    description: '按章节逐段分析视频内容，包含详细的时间戳和描述',
+    promptTemplate:
+      '请重点生成详细的章节大纲，将视频分为6-8个逻辑章节。每个章节必须包含：\n1. 精确的开始时间戳（MM:SS格式）\n2. 简洁明了的章节标题\n3. 3-4句详细描述，说明该章节讨论的关键内容、举的例子或展示的演示\n\n同时生成简要摘要和5-8个亮点。章节大纲应覆盖视频的完整时间线，从开头到结尾。',
+    config: {
+      detailLevel: 900,
+      sentenceNumber: 7,
+      outlineLevel: 3,
+      outputLanguage: '中文',
+      showTimestamp: true,
       showEmoji: true,
     },
     createdAt: Date.now(),
