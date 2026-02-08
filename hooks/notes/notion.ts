@@ -21,7 +21,7 @@ export function useSaveToNotion(note: string, video: string, token: string, data
     try {
       // 从视频 URL 提取标题，如果没有则使用默认标题
       const title = `视频总结 - ${new Date().toLocaleDateString('zh-CN')}`
-      const content = `${note}\n\n原视频：${video}\n#BibiGPT`
+      const content = `${note}\n\n原视频：${video}\n#青鸟收藏夹`
 
       const response = await fetch('/api/notes/notion', {
         method: 'POST',

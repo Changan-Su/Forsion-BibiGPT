@@ -26,7 +26,7 @@ export function useSendEmail(note: string, video: string) {
         },
         body: JSON.stringify({
           to,
-          subject: subject || `BibiGPT 视频总结 - ${new Date().toLocaleDateString('zh-CN')}`,
+          subject: subject || `青鸟收藏夹 视频总结 - ${new Date().toLocaleDateString('zh-CN')}`,
           content: note,
           videoUrl: video,
         }),

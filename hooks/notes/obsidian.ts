@@ -11,7 +11,7 @@ export function useSaveToObsidian(note: string, video: string) {
       // 生成文件名（使用日期和视频ID）
       const date = new Date().toISOString().split('T')[0]
       const videoId = video.match(/[^/]+$/)?.[0] || 'video'
-      const filename = `BibiGPT-${date}-${videoId}`
+      const filename = `青鸟收藏夹-${date}-${videoId}`
 
       // 格式化内容为 Markdown
       const markdownContent = `# 视频总结
@@ -24,7 +24,7 @@ ${note}
 
 **生成时间：** ${new Date().toLocaleString('zh-CN')}
 
-**标签：** #BibiGPT #视频总结
+**标签：** #青鸟收藏夹 #视频总结
 `
 
       // 导出为 Markdown 文件
